@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Pedidos Pendientes de Recepción</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Cliente</th>
+            <th>Producto</th>
+            <th>Cantidad</th>
+            <th>Fecha</th>
+            <th>Acciones</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for pedido in pedidos %}
+        <tr>
+            <td>{{ pedido.id }}</td>
+            <td>{{ pedido.cliente }}</td>
+            <td>{{ pedido.producto }}</td>
+            <td>{{ pedido.cantidad }}</td>
+            <td>{{ pedido.fecha_pedido }}</td>
+            <td>
+                <a href="{% url 'iniciar_inspeccion' pedido.id %}" class="btn btn-sm btn-success">Procesar</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">No hay pedidos pendientes.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

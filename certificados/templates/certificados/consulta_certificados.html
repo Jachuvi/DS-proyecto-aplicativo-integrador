@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Consulta de Certificados de Calidad</h2>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-auto">
+                {{ filterset.form.as_p }}
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-secondary">Filtrar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Lote</th>
+            <th>Pedido</th>
+            <th>Fecha Emisión</th>
+            <th>Estado Envío</th>
+            <th>PDF</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for certificado in certificados %}
+        <tr>
+            <td>{{ certificado.id }}</td>
+            <td>{{ certificado.inspeccion.lote }}</td>
+            <td>{{ certificado.pedido }}</td>
+            <td>{{ certificado.fecha_emision }}</td>
+            <td>
+                {% if certificado.enviado %}
+                <span class="badge bg-success">Enviado</span>
+                {% else %}
+                <span class="badge bg-warning">Pendiente</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if certificado.pdf_url %}
+                <a href="{{ MEDIA_URL }}{{ certificado.pdf_url }}" target="_blank">Ver PDF</a>
+                {% else %}
+                N/A
+                {% endif %}
+            </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="6">No se encontraron certificados.</td></tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

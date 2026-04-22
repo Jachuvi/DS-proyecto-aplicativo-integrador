@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Iniciar Inspección para Pedido #{{ pedido.id }}</h2>
+<div class="card mb-3">
+    <div class="card-body">
+        <p><strong>Producto:</strong> {{ pedido.producto }}</p>
+        <p><strong>Cliente:</strong> {{ pedido.cliente }}</p>
+    </div>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    
+    <div class="mb-3">
+        <label for="equipo" class="form-label">Asignar Equipo</label>
+        <select name="equipo" id="equipo" class="form-select" required>
+            <option value="">Seleccione un equipo...</option>
+            {% for equipo in equipos %}
+            <option value="{{ equipo.id }}">{{ equipo.tipo }} - {{ equipo.serie }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Iniciar Inspección</button>
+</form>
+{% endblock %}

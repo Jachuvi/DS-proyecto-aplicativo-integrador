@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: sans-serif; }
+        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
+        .section { margin-top: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Certificado de Calidad</h1>
+        <p>Certificado ID: {{ certificado.id }}</p>
+        <p>Fecha de Emisión: {{ certificado.fecha_emision|date:"d/m/Y" }}</p>
+    </div>
+
+    <div class="section">
+        <h3>Datos del Cliente</h3>
+        <p><strong>Nombre:</strong> {{ cliente.nombre }}</p>
+        <p><strong>RFC:</strong> {{ cliente.rfc }}</p>
+        <p><strong>Contacto:</strong> {{ cliente.contacto }}</p>
+    </div>
+
+    <div class="section">
+        <h3>Datos del Pedido</h3>
+        <p><strong>Producto:</strong> {{ pedido.producto }}</p>
+        <p><strong>Lote:</strong> {{ lote.codigo_lote }}{{ lote.secuencia }}</p>
+    </div>
+
+    <div class="section">
+        <h3>Resultados de Calidad</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Parámetro</th>
+                    <th>Unidad</th>
+                    <th>Ref. Mín</th>
+                    <th>Ref. Máx</th>
+                    <th>Valor Obtenido</th>
+                    <th>Desvío</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for res in resultados %}
+                <tr>
+                    <td>{{ res.parametro.nombre }}</td>
+                    <td>{{ res.parametro.unidad }}</td>
+                    <td>{{ res.parametro.ref_min }}</td>
+                    <td>{{ res.parametro.ref_max }}</td>
+                    <td>{{ res.valor_obtenido }}</td>
+                    <td>{{ res.desvio_vs_ref }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="section" style="margin-top: 40px; text-align: center;">
+        <p>___________________________</p>
+        <p>Firma de Calidad</p>
+    </div>
+</body>
+</html>

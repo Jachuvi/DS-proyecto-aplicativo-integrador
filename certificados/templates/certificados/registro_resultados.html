@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block content %}
+<h2>Registro de Resultados de Inspección</h2>
+<form method="post">
+    {% csrf_token %}
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Datos de Inspección</h5>
+            {{ form.as_p }}
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body">
+            <h5 class="card-title">Resultados por Parámetro</h5>
+            {{ resultados.management_form }}
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Parámetro</th>
+                        <th>Valor Obtenido</th>
+                        <th>Eliminar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for form_res in resultados %}
+                    <tr>
+                        <td>{{ form_res.parametro }}</td>
+                        <td>{{ form_res.valor_obtenido }}</td>
+                        <td>{{ form_res.DELETE }}</td>
+                        {{ form_res.id }}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Guardar Resultados</button>
+</form>
+{% endblock %}
