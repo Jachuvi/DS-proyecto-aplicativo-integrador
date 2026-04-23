@@ -50,11 +50,26 @@ class Cliente(models.Model):
     domicilio_entrega = models.TextField()
     contacto = models.CharField(max_length=100)
     correo_contacto = models.EmailField()
+    requiere_certificado = models.BooleanField(default=True)
     activo = models.BooleanField(default=True)
+    causa_baja = models.CharField(max_length=255, blank=True, null=True)
+    fecha_baja = models.DateTimeField(blank=True, null=True)
     fecha_alta = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.nombre
+
+
+class Producto(models.Model):
+    codigo = models.CharField(max_length=30, unique=True)
+    nombre = models.CharField(max_length=150)
+    descripcion = models.TextField(blank=True)
+    activo = models.BooleanField(default=True)
+    fecha_alta = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.codigo} - {self.nombre}"
+
 
 class Equipo(models.Model):
     TIPOS = (
@@ -67,18 +82,41 @@ class Equipo(models.Model):
     modelo = models.CharField(max_length=100)
     serie = models.CharField(max_length=100, unique=True)
     responsable = models.ForeignKey(Usuario, on_delete=models.CASCADE)
+    descripcion_corta = models.CharField(max_length=255, blank=True)
+    descripcion_larga = models.TextField(blank=True)
+    proveedor = models.CharField(max_length=150, blank=True)
+    garantia_hasta = models.DateField(blank=True, null=True)
+    activo = models.BooleanField(default=True)
+    fecha_alta = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
-        return f"{self.tipo} - {self.serie}"
+        return f"{self.get_tipo_display()} - {self.serie}"
+
 
 class Parametro(models.Model):
     nombre = models.CharField(max_length=100)
     unidad = models.CharField(max_length=20)
     ref_min = models.DecimalField(max_digits=8, decimal_places=2)
     ref_max = models.DecimalField(max_digits=8, decimal_places=2)
+    activo = models.BooleanField(default=True)
 
     def __str__(self):
         return self.nombre
+
+
+class ParametroCliente(models.Model):
+    """Rangos de referencia específicos por cliente (override del global)."""
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='parametros_cliente')
+    parametro = models.ForeignKey(Parametro, on_delete=models.CASCADE)
+    ref_min = models.DecimalField(max_digits=8, decimal_places=2)
+    ref_max = models.DecimalField(max_digits=8, decimal_places=2)
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('cliente', 'parametro')
+
+    def __str__(self):
+        return f"{self.cliente.nombre} - {self.parametro.nombre}"
 
 class Pedido(models.Model):
     ESTADOS = (
@@ -135,11 +173,32 @@ class Resultado(models.Model):
         super().save(*args, **kwargs)
 
 class Certificado(models.Model):
+    ESTADOS = (
+        ('borrador', 'Borrador'),
+        ('aprobado', 'Aprobado por Calidad'),
+        ('despachado', 'Despachado al Cliente'),
+        ('rechazado', 'Rechazado'),
+    )
+
     inspeccion = models.ForeignKey(Inspeccion, on_delete=models.CASCADE)
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
     fecha_emision = models.DateTimeField(auto_now_add=True)
     pdf_url = models.CharField(max_length=255, blank=True, null=True)
     enviado = models.BooleanField(default=False)
+
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='borrador')
+    aprobado_por = models.ForeignKey(
+        Usuario, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='certificados_aprobados'
+    )
+    fecha_aprobacion = models.DateTimeField(null=True, blank=True)
+    fecha_caducidad = models.DateField(null=True, blank=True)
+
+    numero_factura = models.CharField(max_length=50, blank=True, null=True)
+    cantidad_total_entrega = models.DecimalField(
+        max_digits=10, decimal_places=2, null=True, blank=True
+    )
+    fecha_envio = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Certificado {self.id} - {self.inspeccion.lote}"

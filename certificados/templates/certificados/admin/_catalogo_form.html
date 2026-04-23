@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}{{ entidad }}{% endblock %}
+{% block page_title %}{% if es_edicion %}Editar{% else %}Nuevo{% endif %} {{ entidad }}{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-3">{% if es_edicion %}Editar{% else %}Nuevo{% endif %} {{ entidad }}</h2>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+            </div>
+            {% endfor %}
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn-brand">Guardar</button>
+                <a href="{{ cancel_url }}" class="btn-brand-outline">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.querySelectorAll('form input, form select, form textarea').forEach(el => {
+        if (el.tagName === 'SELECT') el.classList.add('form-select');
+        else if (el.type === 'checkbox' || el.type === 'radio') el.classList.add('form-check-input');
+        else if (el.type !== 'hidden' && el.type !== 'submit') el.classList.add('form-control');
+    });
+</script>
+{% endblock %}

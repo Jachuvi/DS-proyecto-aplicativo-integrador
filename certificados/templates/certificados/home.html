@@ -96,10 +96,19 @@
     </div>
     <div class="col-md-3 col-sm-6">
         <div class="stat-card">
-            <div class="stat-icon navy"><i class="bi bi-award"></i></div>
+            <div class="stat-icon red"><i class="bi bi-clipboard-data"></i></div>
             <div>
-                <div class="stat-value">{{ certificados_totales }}</div>
-                <div class="stat-label">Certificados emitidos</div>
+                <div class="stat-value">{{ certificados_por_aprobar }}</div>
+                <div class="stat-label">Por aprobar (Calidad)</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon amber"><i class="bi bi-truck"></i></div>
+            <div>
+                <div class="stat-value">{{ certificados_por_despachar }}</div>
+                <div class="stat-label">Por despachar (Almacén)</div>
             </div>
         </div>
     </div>
@@ -109,6 +118,15 @@
             <div>
                 <div class="stat-value">{{ certificados_enviados }}</div>
                 <div class="stat-label">Enviados al cliente</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon navy"><i class="bi bi-award"></i></div>
+            <div>
+                <div class="stat-value">{{ certificados_totales }}</div>
+                <div class="stat-label">Certificados emitidos</div>
             </div>
         </div>
     </div>
@@ -149,8 +167,18 @@
     <div class="col-md-4 col-sm-6">
         <a href="{% url 'consulta_certificados' %}" class="action-card">
             <div class="icon"><i class="bi bi-award"></i></div>
-            <h3>Consultar Certificados</h3>
-            <p>Explora el histórico de certificados emitidos con filtros por fecha.</p>
+            <h3>Consultar y Aprobar Certificados</h3>
+            <p>Revisa certificados en borrador, aprúebalos y dispara el envío al cliente.</p>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if user.rol == 'almacen' or user.rol == 'admin' %}
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'pendientes_despacho' %}" class="action-card">
+            <div class="icon"><i class="bi bi-truck"></i></div>
+            <h3>Despachos Pendientes</h3>
+            <p>Captura factura y cantidad entregada para cerrar el ciclo de despacho.</p>
         </a>
     </div>
     {% endif %}

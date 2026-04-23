@@ -264,16 +264,37 @@
 
             {% if user.rol == 'calidad' or user.rol == 'admin' %}
             <div class="nav-section">Calidad</div>
-            <a href="{% url 'consulta_certificados' %}" class="{% if request.resolver_match.url_name == 'consulta_certificados' %}active{% endif %}">
+            <a href="{% url 'consulta_certificados' %}" class="{% if request.resolver_match.url_name == 'consulta_certificados' or request.resolver_match.url_name == 'aprobar_certificado' %}active{% endif %}">
                 <i class="bi bi-award"></i> Consultar Certificados
             </a>
             {% endif %}
 
-            {% if user.is_staff %}
+            {% if user.rol == 'almacen' or user.rol == 'admin' %}
+            <div class="nav-section">Almacén</div>
+            <a href="{% url 'pendientes_despacho' %}" class="{% if request.resolver_match.url_name == 'pendientes_despacho' or request.resolver_match.url_name == 'registrar_despacho' %}active{% endif %}">
+                <i class="bi bi-truck"></i> Despachos Pendientes
+            </a>
+            {% endif %}
+
+            {% if user.rol == 'admin' %}
             <div class="nav-section">Administración</div>
+            <a href="{% url 'cliente_list' %}" class="{% if request.resolver_match.url_name == 'cliente_list' or request.resolver_match.url_name == 'cliente_create' or request.resolver_match.url_name == 'cliente_update' or request.resolver_match.url_name == 'parametro_cliente_list' or request.resolver_match.url_name == 'parametro_cliente_create' or request.resolver_match.url_name == 'parametro_cliente_update' %}active{% endif %}">
+                <i class="bi bi-people"></i> Clientes
+            </a>
+            <a href="{% url 'producto_list' %}" class="{% if request.resolver_match.url_name == 'producto_list' or request.resolver_match.url_name == 'producto_create' or request.resolver_match.url_name == 'producto_update' %}active{% endif %}">
+                <i class="bi bi-box-seam"></i> Productos
+            </a>
+            <a href="{% url 'equipo_list' %}" class="{% if request.resolver_match.url_name == 'equipo_list' or request.resolver_match.url_name == 'equipo_create' or request.resolver_match.url_name == 'equipo_update' %}active{% endif %}">
+                <i class="bi bi-cpu"></i> Equipos
+            </a>
+            <a href="{% url 'parametro_list' %}" class="{% if request.resolver_match.url_name == 'parametro_list' or request.resolver_match.url_name == 'parametro_create' or request.resolver_match.url_name == 'parametro_update' %}active{% endif %}">
+                <i class="bi bi-sliders"></i> Parámetros
+            </a>
+            {% if user.is_staff %}
             <a href="/admin/" target="_blank">
                 <i class="bi bi-gear"></i> Panel Django
             </a>
+            {% endif %}
             {% endif %}
         </nav>
 
@@ -307,6 +328,16 @@
             <div></div>
         </header>
         <main class="content">
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% block content %}{% endblock %}
         </main>
     </div>
