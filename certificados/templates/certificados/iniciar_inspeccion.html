@@ -1,27 +1,56 @@
 {% extends "base.html" %}
+{% block title %}Iniciar Inspección{% endblock %}
+{% block page_title %}Iniciar Inspección{% endblock %}
+
 {% block content %}
-<h2>Iniciar Inspección para Pedido #{{ pedido.id }}</h2>
 <div class="card mb-3">
-    <div class="card-body">
-        <p><strong>Producto:</strong> {{ pedido.producto }}</p>
-        <p><strong>Cliente:</strong> {{ pedido.cliente }}</p>
+    <div class="card-body p-4">
+        <h2 class="card-title mb-3">Pedido #{{ pedido.id }}</h2>
+        <div class="row">
+            <div class="col-md-6"><strong>Producto:</strong> {{ pedido.producto }}</div>
+            <div class="col-md-6"><strong>Cliente:</strong> {{ pedido.cliente }}</div>
+            <div class="col-md-6 mt-2"><strong>Cantidad:</strong> {{ pedido.cantidad }}</div>
+            <div class="col-md-6 mt-2"><strong>Fecha:</strong> {{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</div>
+        </div>
     </div>
 </div>
 
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    
-    <div class="mb-3">
-        <label for="equipo" class="form-label">Asignar Equipo</label>
-        <select name="equipo" id="equipo" class="form-select" required>
-            <option value="">Seleccione un equipo...</option>
-            {% for equipo in equipos %}
-            <option value="{{ equipo.id }}">{{ equipo.tipo }} - {{ equipo.serie }}</option>
+<div class="card">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-4">Datos del Lote</h2>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+            </div>
             {% endfor %}
-        </select>
+
+            <div class="mb-3">
+                <label for="equipo" class="form-label">Equipo de laboratorio</label>
+                <select name="equipo" id="equipo" class="form-select" required>
+                    <option value="">Seleccione un equipo...</option>
+                    {% for equipo in equipos %}
+                    <option value="{{ equipo.id }}">{{ equipo.get_tipo_display }} — {{ equipo.serie }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn-brand">Iniciar Inspección</button>
+                <a href="{% url 'recepcion_pedidos' %}" class="btn-brand-outline">Cancelar</a>
+            </div>
+        </form>
     </div>
-    
-    <button type="submit" class="btn btn-primary">Iniciar Inspección</button>
-</form>
+</div>
+
+<script>
+    document.querySelectorAll('form input, form select, form textarea').forEach(el => {
+        if (el.tagName === 'SELECT' && !el.classList.contains('form-select')) el.classList.add('form-select');
+        else if (el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'hidden' && el.type !== 'submit')
+            el.classList.add('form-control');
+    });
+</script>
 {% endblock %}

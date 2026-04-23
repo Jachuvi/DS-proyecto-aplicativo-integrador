@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Inicio{% endblock %}
+{% block page_title %}Inicio{% endblock %}
+
+{% block extra_head %}
+<style>
+    .welcome {
+        background: linear-gradient(135deg, #1a2a5e 0%, #111b40 100%);
+        color: #fff;
+        border-radius: 14px;
+        padding: 28px 32px;
+        margin-bottom: 28px;
+    }
+    .welcome h2 { margin: 0 0 6px; font-weight: 600; }
+    .welcome p { margin: 0; opacity: 0.85; }
+
+    .stat-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 22px;
+        box-shadow: 0 2px 10px rgba(26, 42, 94, 0.06);
+        display: flex;
+        align-items: center;
+        gap: 16px;
+    }
+    .stat-icon {
+        width: 52px; height: 52px;
+        border-radius: 10px;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.5rem;
+        flex-shrink: 0;
+    }
+    .stat-icon.navy { background: #e8ecf7; color: #1a2a5e; }
+    .stat-icon.green { background: #e3f5ea; color: #1d7a43; }
+    .stat-icon.amber { background: #fdf3dc; color: #8a6112; }
+    .stat-icon.red { background: #fbe6e6; color: #a02525; }
+    .stat-value { font-size: 1.7rem; font-weight: 700; color: #1a2a5e; line-height: 1; }
+    .stat-label { font-size: 0.85rem; color: #6c757d; margin-top: 4px; }
+
+    .action-card {
+        background: #fff;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 2px 10px rgba(26, 42, 94, 0.06);
+        text-decoration: none;
+        color: inherit;
+        display: block;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        height: 100%;
+    }
+    .action-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 8px 20px rgba(26, 42, 94, 0.12);
+        color: inherit;
+    }
+    .action-card .icon {
+        font-size: 2rem;
+        color: #1a2a5e;
+        margin-bottom: 12px;
+    }
+    .action-card h3 {
+        font-size: 1.05rem;
+        color: #1a2a5e;
+        margin: 0 0 6px;
+        font-weight: 600;
+    }
+    .action-card p {
+        font-size: 0.85rem;
+        color: #6c757d;
+        margin: 0;
+    }
+    .section-title {
+        color: #1a2a5e;
+        font-size: 1.05rem;
+        font-weight: 600;
+        margin: 24px 0 14px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="welcome">
+    <h2>Bienvenido, {{ user.nombre }}</h2>
+    <p>Gestiona pedidos, inspecciones y certificados de calidad desde un solo lugar.</p>
+</div>
+
+<div class="row g-3 mb-2">
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+            <div>
+                <div class="stat-value">{{ pedidos_pendientes }}</div>
+                <div class="stat-label">Pedidos pendientes</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon navy"><i class="bi bi-award"></i></div>
+            <div>
+                <div class="stat-value">{{ certificados_totales }}</div>
+                <div class="stat-label">Certificados emitidos</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="bi bi-send-check"></i></div>
+            <div>
+                <div class="stat-value">{{ certificados_enviados }}</div>
+                <div class="stat-label">Enviados al cliente</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="stat-card">
+            <div class="stat-icon navy"><i class="bi bi-building"></i></div>
+            <div>
+                <div class="stat-value">{{ clientes_activos }}</div>
+                <div class="stat-label">Clientes activos</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3 class="section-title">Accesos rápidos</h3>
+<div class="row g-3">
+    {% if user.rol == 'ventas' or user.rol == 'admin' %}
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'registro_pedido' %}" class="action-card">
+            <div class="icon"><i class="bi bi-file-earmark-plus"></i></div>
+            <h3>Registrar Pedido</h3>
+            <p>Captura un nuevo pedido de cliente para iniciar el proceso de certificación.</p>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if user.rol == 'lab' or user.rol == 'admin' %}
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'recepcion_pedidos' %}" class="action-card">
+            <div class="icon"><i class="bi bi-clipboard-check"></i></div>
+            <h3>Recepción de Pedidos</h3>
+            <p>Revisa pedidos pendientes, asigna equipo de laboratorio e inicia la inspección.</p>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if user.rol == 'calidad' or user.rol == 'admin' %}
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'consulta_certificados' %}" class="action-card">
+            <div class="icon"><i class="bi bi-award"></i></div>
+            <h3>Consultar Certificados</h3>
+            <p>Explora el histórico de certificados emitidos con filtros por fecha.</p>
+        </a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
