@@ -1,0 +1,243 @@
+{% extends "base.html" %}
+{% block title %}Historial — {{ lote.codigo_lote }}{{ lote.secuencia }}{% endblock %}
+{% block page_title %}Trazabilidad del lote {{ lote.codigo_lote }}{{ lote.secuencia }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .timeline { position: relative; padding-left: 28px; border-left: 2px solid #e8ecf7; margin-left: 10px; }
+    .timeline-item { position: relative; margin-bottom: 22px; }
+    .timeline-dot {
+        position: absolute; left: -38px; top: 4px;
+        width: 22px; height: 22px; border-radius: 50%;
+        background: #1a2a5e; color: #fff;
+        display: flex; align-items: center; justify-content: center; font-size: 0.75rem;
+    }
+    .timeline-dot.green  { background: #1d7a43; }
+    .timeline-dot.amber  { background: #8a6112; }
+    .timeline-dot.red    { background: #a02525; }
+    .timeline-dot.muted  { background: #6c757d; }
+    .timeline-title { font-weight: 600; color: #1a2a5e; margin: 0; }
+    .timeline-meta  { font-size: 0.85rem; color: #6c757d; }
+    .info-grid { display: grid; grid-template-columns: 160px 1fr; row-gap: 6px; column-gap: 12px; }
+    .info-grid dt { color: #6c757d; font-weight: 500; }
+    .info-grid dd { margin: 0; color: #1a2a5e; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <div>
+        <h2 class="mb-1" style="color:#1a2a5e;">Lote {{ lote.codigo_lote }}{{ lote.secuencia }}</h2>
+        <p class="text-muted mb-0">Trazabilidad completa: pedido → lote → inspección → resultados → certificado.</p>
+    </div>
+    <a href="{% url 'historial_index' %}" class="btn-brand-outline">
+        <i class="bi bi-arrow-left"></i> Volver al listado
+    </a>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <h3 class="card-title mb-3" style="color:#1a2a5e;font-size:1.05rem;">
+                    <i class="bi bi-receipt"></i> Pedido #{{ pedido.id }}
+                </h3>
+                <dl class="info-grid mb-0">
+                    <dt>Producto</dt><dd>{{ pedido.producto }}</dd>
+                    <dt>Cantidad</dt><dd>{{ pedido.cantidad }}</dd>
+                    <dt>Fecha</dt><dd>{{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</dd>
+                    <dt>Estado</dt><dd>{{ pedido.get_estado_display }}</dd>
+                </dl>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-body p-4">
+                <h3 class="card-title mb-3" style="color:#1a2a5e;font-size:1.05rem;">
+                    <i class="bi bi-building"></i> Cliente
+                </h3>
+                <dl class="info-grid mb-0">
+                    <dt>Nombre</dt><dd>{{ cliente.nombre }}</dd>
+                    <dt>RFC</dt><dd>{{ cliente.rfc }}</dd>
+                    <dt>Contacto</dt><dd>{{ cliente.contacto }}</dd>
+                    <dt>Correo</dt><dd>{{ cliente.correo_contacto }}</dd>
+                    {% if cliente.clave_doc_especificaciones %}
+                    <dt>Doc. especificaciones</dt><dd>{{ cliente.clave_doc_especificaciones }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body p-4">
+        <h3 class="card-title mb-3" style="color:#1a2a5e;font-size:1.05rem;">
+            <i class="bi bi-clipboard-check"></i> Inspecciones y resultados
+        </h3>
+
+        {% for bloque in bloques %}
+        <div class="mb-4">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <div>
+                    <strong>Inspección #{{ bloque.inspeccion.id }}</strong>
+                    <span class="text-muted">— {{ bloque.inspeccion.fecha_inspeccion|date:"d/m/Y H:i" }}</span>
+                    {% if bloque.inspeccion.inspeccion_origen %}
+                    <span class="badge bg-info text-dark ms-2">Re-análisis de #{{ bloque.inspeccion.inspeccion_origen_id }}</span>
+                    {% endif %}
+                </div>
+                <div>
+                    {% if bloque.inspeccion.cumple_param %}
+                    <span class="badge bg-success">Cumple</span>
+                    {% else %}
+                    <span class="badge bg-danger">No cumple</span>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-muted small mb-2">
+                Equipo: {{ bloque.inspeccion.equipo.get_tipo_display }} — {{ bloque.inspeccion.equipo.serie }}
+            </div>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr>
+                            <th>Parámetro</th>
+                            <th>Valor</th>
+                            <th>Ref. mín</th>
+                            <th>Ref. máx</th>
+                            <th>Origen ref.</th>
+                            <th>Desvío</th>
+                            <th class="text-center">Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for fila in bloque.filas %}
+                        <tr>
+                            <td><strong>{{ fila.parametro.nombre }}</strong> <span class="text-muted">({{ fila.parametro.unidad }})</span></td>
+                            <td>{{ fila.valor }}</td>
+                            <td>{{ fila.ref_min }}</td>
+                            <td>{{ fila.ref_max }}</td>
+                            <td>
+                                {% if fila.fuente == 'Cliente' %}
+                                <span class="badge bg-info text-dark">Cliente</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Global</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ fila.desvio }}</td>
+                            <td class="text-center">
+                                {% if fila.cumple %}
+                                <i class="bi bi-check-circle-fill text-success"></i>
+                                {% else %}
+                                <i class="bi bi-x-circle-fill text-danger"></i>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr><td colspan="7" class="text-muted text-center">Sin resultados capturados.</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-muted mb-0">Este lote aún no tiene inspecciones.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body p-4">
+        <h3 class="card-title mb-3" style="color:#1a2a5e;font-size:1.05rem;">
+            <i class="bi bi-clock-history"></i> Línea de tiempo del certificado
+        </h3>
+
+        {% if certificados %}
+            {% for cert in certificados %}
+            <div class="mb-3">
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <strong>Certificado #{{ cert.id }} <span class="badge bg-secondary">{{ cert.get_estado_display }}</span></strong>
+                    {% if cert.pdf_url %}
+                    <a href="{{ MEDIA_URL }}{{ cert.pdf_url }}" target="_blank" class="btn-brand-outline">
+                        <i class="bi bi-file-pdf"></i> Ver PDF
+                    </a>
+                    {% endif %}
+                </div>
+                <div class="timeline">
+                    <div class="timeline-item">
+                        <div class="timeline-dot"><i class="bi bi-file-earmark-text"></i></div>
+                        <p class="timeline-title">Borrador generado</p>
+                        <p class="timeline-meta">{{ cert.fecha_emision|date:"d/m/Y H:i" }}</p>
+                    </div>
+
+                    {% if cert.fecha_aprobacion %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot green"><i class="bi bi-check2"></i></div>
+                        <p class="timeline-title">Aprobado por Calidad</p>
+                        <p class="timeline-meta">
+                            {{ cert.fecha_aprobacion|date:"d/m/Y H:i" }}
+                            {% if cert.aprobado_por %} — {{ cert.aprobado_por.nombre }}{% endif %}
+                            {% if cert.fecha_caducidad %} · Válido hasta {{ cert.fecha_caducidad|date:"d/m/Y" }}{% endif %}
+                        </p>
+                    </div>
+                    {% elif cert.estado == 'borrador' %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot muted"><i class="bi bi-hourglass"></i></div>
+                        <p class="timeline-title text-muted">Pendiente de aprobación</p>
+                    </div>
+                    {% endif %}
+
+                    {% if cert.enviado %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot green"><i class="bi bi-envelope-check"></i></div>
+                        <p class="timeline-title">PDF enviado al cliente</p>
+                        <p class="timeline-meta">{{ cliente.correo_contacto }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if cert.leido_cliente %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot green"><i class="bi bi-eye"></i></div>
+                        <p class="timeline-title">Acuse de lectura del cliente</p>
+                        <p class="timeline-meta">{{ cert.fecha_lectura|date:"d/m/Y H:i" }}</p>
+                    </div>
+                    {% endif %}
+
+                    {% if cert.fecha_envio %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot green"><i class="bi bi-truck"></i></div>
+                        <p class="timeline-title">Despachado</p>
+                        <p class="timeline-meta">
+                            {{ cert.fecha_envio|date:"d/m/Y H:i" }}
+                            {% if cert.numero_factura %} · Factura {{ cert.numero_factura }}{% endif %}
+                            {% if cert.cantidad_total_entrega %} · {{ cert.cantidad_total_entrega }} unidades{% endif %}
+                        </p>
+                    </div>
+                    {% elif cert.estado == 'aprobado' %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot amber"><i class="bi bi-truck"></i></div>
+                        <p class="timeline-title text-muted">Pendiente de despacho</p>
+                    </div>
+                    {% endif %}
+
+                    {% if cert.estado == 'rechazado' %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot red"><i class="bi bi-x-circle"></i></div>
+                        <p class="timeline-title">Rechazado</p>
+                    </div>
+                    {% elif cert.estado == 'superado' %}
+                    <div class="timeline-item">
+                        <div class="timeline-dot muted"><i class="bi bi-arrow-repeat"></i></div>
+                        <p class="timeline-title">Superado por re-análisis</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p class="text-muted mb-0">Aún no se ha generado certificado para este lote.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

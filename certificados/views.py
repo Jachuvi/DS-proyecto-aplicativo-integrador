@@ -1,8 +1,23 @@
-from django.shortcuts import render, redirect, get_object_or_404
-from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DetailView, FormView, TemplateView
+import os
+import string
+from datetime import timedelta
+
+from django.shortcuts import redirect, get_object_or_404
+from django.urls import reverse_lazy, reverse
+from django.views.generic import ListView, CreateView, UpdateView, TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
-from django.forms import inlineformset_factory, modelform_factory
+from django.contrib import messages
+from django.core.mail import EmailMessage
+from django.conf import settings
+from django.db import transaction
+from django.db.models import Count
+from django.db.models.functions import TruncMonth
+from django.forms import inlineformset_factory
+from django.http import HttpResponse
+from django.utils import timezone
+
+import django_filters
+
 from .models import (
     Pedido,
     Cliente,
@@ -10,28 +25,49 @@ from .models import (
     Inspeccion,
     Resultado,
     Certificado,
-    Parametro,
     Equipo,
+    Parametro,
+    ParametroCliente,
+    Producto,
+    Usuario,
 )
-from django.db import transaction
-import django_filters
 
 
+# 1x1 transparent PNG used as the email open-tracking pixel
+_TRACKING_PIXEL = (
+    b"\x89PNG\r\n\x1a\n\x00\x00\x00\rIHDR\x00\x00\x00\x01\x00\x00\x00\x01"
+    b"\x08\x06\x00\x00\x00\x1f\x15\xc4\x89\x00\x00\x00\rIDATx\x9cc\xf8\xcf\xc0"
+    b"\x00\x00\x00\x03\x00\x01\x9a\xc0\x12\xa3\x00\x00\x00\x00IEND\xaeB`\x82"
+)
+
+
+# ---------------------------------------------------------------------------
+# Home
+# ---------------------------------------------------------------------------
 class HomeView(LoginRequiredMixin, TemplateView):
     template_name = "certificados/home.html"
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        user = self.request.user
         ctx["pedidos_pendientes"] = Pedido.objects.filter(estado="pendiente").count()
         ctx["certificados_totales"] = Certificado.objects.count()
         ctx["certificados_enviados"] = Certificado.objects.filter(enviado=True).count()
         ctx["clientes_activos"] = Cliente.objects.filter(activo=True).count()
+        ctx["certificados_por_aprobar"] = Certificado.objects.filter(estado="borrador").count()
+        ctx["certificados_por_despachar"] = Certificado.objects.filter(estado="aprobado").count()
         return ctx
 
 
-# Access Control Mixin
+# ---------------------------------------------------------------------------
+# Access control
+# ---------------------------------------------------------------------------
 class RoleRequiredMixin(UserPassesTestMixin):
+    """
+    Permite los roles listados en allowed_roles.
+    'admin' siempre tiene acceso.
+    'consulta' tiene acceso de solo lectura: para vistas que listan / consultan
+    se debe incluir explícitamente en allowed_roles cuando aplique.
+    """
     allowed_roles = []
 
     def test_func(self):
@@ -41,7 +77,9 @@ class RoleRequiredMixin(UserPassesTestMixin):
         )
 
 
-# 1. RegistroDePedidoView
+# ---------------------------------------------------------------------------
+# Ventas — Registro de pedido
+# ---------------------------------------------------------------------------
 class RegistroDePedidoView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     model = Pedido
     fields = ["cliente", "producto", "cantidad"]
@@ -54,7 +92,9 @@ class RegistroDePedidoView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
         return super().form_valid(form)
 
 
-# 2. RecepcionPedidoView (List of pending orders)
+# ---------------------------------------------------------------------------
+# Laboratorio — Recepción e inspección
+# ---------------------------------------------------------------------------
 class RecepcionPedidoView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     model = Pedido
     template_name = "certificados/recepcion_pedidos.html"
@@ -65,33 +105,64 @@ class RecepcionPedidoView(LoginRequiredMixin, RoleRequiredMixin, ListView):
         return Pedido.objects.filter(estado="pendiente")
 
 
-# 3. AsignarEquipoView (Creates Lote and Inspeccion)
+def _next_secuencia_lote(pedido):
+    """Devuelve la siguiente letra A-Z disponible para el pedido."""
+    usadas = set(
+        Lote.objects.filter(pedido=pedido).values_list("secuencia", flat=True)
+    )
+    for letra in string.ascii_uppercase:
+        if letra not in usadas:
+            return letra
+    return ""
+
+
+def _suggested_codigo_lote(pedido):
+    return f"LOT-{timezone.now():%Y%m%d}-P{pedido.id}"
+
+
 class IniciarInspeccionView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     model = Lote
     fields = ["codigo_lote", "secuencia"]
     template_name = "certificados/iniciar_inspeccion.html"
     allowed_roles = ["lab"]
 
+    def get_initial(self):
+        initial = super().get_initial()
+        pedido = get_object_or_404(Pedido, id=self.kwargs["pedido_id"])
+        initial["codigo_lote"] = _suggested_codigo_lote(pedido)
+        initial["secuencia"] = _next_secuencia_lote(pedido)
+        return initial
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
-        context["pedido"] = get_object_or_404(Pedido, id=self.kwargs["pedido_id"])
-        context["equipos"] = Equipo.objects.all()
+        pedido = get_object_or_404(Pedido, id=self.kwargs["pedido_id"])
+        context["pedido"] = pedido
+        context["equipos"] = Equipo.objects.filter(activo=True)
+        context["lotes_existentes"] = Lote.objects.filter(pedido=pedido).order_by("secuencia")
+        context["secuencia_sugerida"] = _next_secuencia_lote(pedido)
         return context
 
     def form_valid(self, form):
         pedido = get_object_or_404(Pedido, id=self.kwargs["pedido_id"])
+        secuencia = (form.cleaned_data.get("secuencia") or "").upper().strip()
+
+        if not secuencia or secuencia not in string.ascii_uppercase:
+            form.add_error("secuencia", "La secuencia debe ser una letra de A a Z.")
+            return self.form_invalid(form)
+        if Lote.objects.filter(pedido=pedido, secuencia=secuencia).exists():
+            form.add_error(
+                "secuencia",
+                f"Ya existe un lote con la secuencia '{secuencia}' para este pedido."
+            )
+            return self.form_invalid(form)
+
         with transaction.atomic():
             form.instance.pedido = pedido
+            form.instance.secuencia = secuencia
             self.object = form.save()
-
-            # Mutar el estado a "en proceso"
-            pedido.estado = "aceptado"  # Assuming 'aceptado' means 'in process' or just moving forward
-            # Actually, the requirement says: "Mutar el estado a 'en proceso' al asignar una instancia de Equipo"
-            # But the ENUM doesn't have 'en proceso'. It has 'aceptado'.
-            # I will use 'aceptado' as the 'en proceso' state for now or stick to the ENUM.
+            pedido.estado = "aceptado"
             pedido.save()
 
-            # Create Inspeccion
             equipo_id = self.request.POST.get("equipo")
             equipo = get_object_or_404(Equipo, id=equipo_id)
             inspeccion = Inspeccion.objects.create(lote=self.object, equipo=equipo)
@@ -99,7 +170,6 @@ class IniciarInspeccionView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
         return redirect("registro_resultados", pk=inspeccion.pk)
 
 
-# 3. RegistroResultadosView
 ResultadoFormSet = inlineformset_factory(
     Inspeccion,
     Resultado,
@@ -107,6 +177,24 @@ ResultadoFormSet = inlineformset_factory(
     extra=5,
     can_delete=True,
 )
+
+
+def _evaluar_cumple(inspeccion):
+    """Evalúa si la inspección cumple aplicando overrides por cliente."""
+    cliente_id = inspeccion.lote.pedido.cliente_id
+    overrides = {
+        pc.parametro_id: (pc.ref_min, pc.ref_max)
+        for pc in ParametroCliente.objects.filter(cliente_id=cliente_id, activo=True)
+    }
+    if not inspeccion.resultados.exists():
+        return False
+    for res in inspeccion.resultados.all():
+        ref_min, ref_max = overrides.get(
+            res.parametro_id, (res.parametro.ref_min, res.parametro.ref_max)
+        )
+        if not (ref_min <= res.valor_obtenido <= ref_max):
+            return False
+    return True
 
 
 class RegistroResultadosView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
@@ -119,9 +207,7 @@ class RegistroResultadosView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         if self.request.POST:
-            data["resultados"] = ResultadoFormSet(
-                self.request.POST, instance=self.object
-            )
+            data["resultados"] = ResultadoFormSet(self.request.POST, instance=self.object)
         else:
             data["resultados"] = ResultadoFormSet(instance=self.object)
         return data
@@ -132,52 +218,39 @@ class RegistroResultadosView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
         with transaction.atomic():
             if resultados.is_valid():
                 resultados.save()
-
-                # Validación lógica booleana
-                cumple = True
-                if not self.object.resultados.exists():
-                    cumple = False
-                else:
-                    for res in self.object.resultados.all():
-                        if not (
-                            res.parametro.ref_min
-                            <= res.valor_obtenido
-                            <= res.parametro.ref_max
-                        ):
-                            cumple = False
-                            break
-
+                cumple = _evaluar_cumple(self.object)
                 self.object.cumple_param = cumple
                 self.object.save()
 
-                # Update Pedido status final
                 pedido = self.object.lote.pedido
-                if cumple:
-                    pedido.estado = "despachado"
-                else:
-                    pedido.estado = "rechazado"
+                pedido.estado = "despachado" if cumple else "rechazado"
                 pedido.save()
 
         return redirect(self.success_url)
 
 
-# 4. ConsultaCertificadosView
+# ---------------------------------------------------------------------------
+# Calidad — Consulta y aprobación
+# ---------------------------------------------------------------------------
 class CertificadoFilter(django_filters.FilterSet):
     fecha_emision = django_filters.DateFromToRangeFilter(field_name="fecha_emision")
+    estado = django_filters.ChoiceFilter(choices=Certificado.ESTADOS)
 
     class Meta:
         model = Certificado
-        fields = ["fecha_emision"]
+        fields = ["fecha_emision", "estado"]
 
 
 class ConsultaCertificadosView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     model = Certificado
     template_name = "certificados/consulta_certificados.html"
     context_object_name = "certificados"
-    allowed_roles = ["admin", "calidad"]
+    allowed_roles = ["admin", "calidad", "consulta"]
 
     def get_queryset(self):
-        queryset = super().get_queryset()
+        queryset = super().get_queryset().select_related(
+            "inspeccion__lote", "pedido__cliente", "aprobado_por"
+        ).order_by("-fecha_emision")
         self.filterset = CertificadoFilter(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -185,3 +258,680 @@ class ConsultaCertificadosView(LoginRequiredMixin, RoleRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context["filterset"] = self.filterset
         return context
+
+
+class AprobarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
+    """
+    Aprueba un certificado en borrador: marca estado='aprobado',
+    calcula fecha de caducidad (6 meses), envía el PDF al cliente
+    y notifica al almacén para preparar despacho.
+    """
+    allowed_roles = ["calidad"]
+
+    def post(self, request, pk):
+        certificado = get_object_or_404(Certificado, pk=pk)
+
+        if certificado.estado != "borrador":
+            messages.warning(request, f"El certificado #{certificado.id} ya fue procesado.")
+            return redirect("consulta_certificados")
+
+        with transaction.atomic():
+            certificado.estado = "aprobado"
+            certificado.aprobado_por = request.user
+            certificado.fecha_aprobacion = timezone.now()
+            certificado.fecha_caducidad = (timezone.now() + timedelta(days=180)).date()
+            certificado.save()
+
+        self._enviar_al_cliente(certificado)
+        self._notificar_almacen(certificado)
+
+        messages.success(
+            request,
+            f"Certificado #{certificado.id} aprobado y enviado al cliente."
+        )
+        return redirect("consulta_certificados")
+
+    def _enviar_al_cliente(self, certificado):
+        if not certificado.pdf_url:
+            return
+        correo_cliente = certificado.pedido.cliente.correo_contacto
+        absolute_path = os.path.join(settings.MEDIA_ROOT, certificado.pdf_url)
+        tracking_url = self.request.build_absolute_uri(
+            reverse("certificado_leido", kwargs={"pk": certificado.pk})
+        )
+        try:
+            email = EmailMessage(
+                subject=f"Certificado de Calidad - Pedido {certificado.pedido.id}",
+                body=(
+                    f"Estimado cliente,\n\n"
+                    f"Adjunto encontrará el certificado de calidad correspondiente "
+                    f"a su pedido #{certificado.pedido.id}.\n\n"
+                    f"Válido hasta: {certificado.fecha_caducidad}.\n"
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=[correo_cliente],
+            )
+            # Versión HTML con pixel de seguimiento (acuse de lectura)
+            html_body = (
+                f"<p>Estimado cliente,</p>"
+                f"<p>Adjunto encontrará el certificado de calidad correspondiente "
+                f"a su pedido <strong>#{certificado.pedido.id}</strong>.</p>"
+                f"<p>Válido hasta: <strong>{certificado.fecha_caducidad}</strong>.</p>"
+                f'<img src="{tracking_url}" width="1" height="1" alt="" '
+                f'style="display:none">'
+            )
+            email.content_subtype = "html"
+            email.body = html_body
+            with open(absolute_path, "rb") as f:
+                email.attach(os.path.basename(absolute_path), f.read(), "application/pdf")
+            email.send()
+            certificado.enviado = True
+            certificado.save(update_fields=["enviado"])
+        except Exception as e:
+            print(f"Error enviando correo al cliente: {e}")
+
+    def _notificar_almacen(self, certificado):
+        destinatarios = list(
+            Usuario.objects.filter(rol="almacen", is_active=True)
+            .values_list("correo", flat=True)
+        )
+        if not destinatarios:
+            return
+        try:
+            EmailMessage(
+                subject=f"Certificado aprobado - Preparar despacho pedido {certificado.pedido.id}",
+                body=(
+                    f"Se aprobó el certificado #{certificado.id} para el pedido "
+                    f"#{certificado.pedido.id} del cliente {certificado.pedido.cliente}.\n\n"
+                    f"Producto: {certificado.pedido.producto}\n"
+                    f"Cantidad: {certificado.pedido.cantidad}\n"
+                    f"Lote: {certificado.inspeccion.lote}\n\n"
+                    f"Favor de preparar el despacho y registrar el número de factura "
+                    f"desde el módulo de Almacén."
+                ),
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                to=destinatarios,
+            ).send()
+        except Exception as e:
+            print(f"Error notificando al almacén: {e}")
+
+
+class CertificadoLeidoView(View):
+    """Endpoint del pixel de tracking — registra la lectura del correo."""
+
+    def get(self, request, pk):
+        try:
+            cert = Certificado.objects.get(pk=pk)
+            if not cert.leido_cliente:
+                cert.leido_cliente = True
+                cert.fecha_lectura = timezone.now()
+                cert.save(update_fields=["leido_cliente", "fecha_lectura"])
+        except Certificado.DoesNotExist:
+            pass
+        return HttpResponse(_TRACKING_PIXEL, content_type="image/png")
+
+
+# ---------------------------------------------------------------------------
+# Calidad — Edición de certificado (caso 2.2.9)
+# ---------------------------------------------------------------------------
+ReanalisisFormSet = inlineformset_factory(
+    Inspeccion,
+    Resultado,
+    fields=("parametro", "valor_obtenido"),
+    extra=0,
+    can_delete=False,
+)
+
+
+class EditarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
+    """
+    Caso 2.2.9: el usuario edita los resultados del certificado y la aplicación
+    genera una NUEVA inspección (con la siguiente secuencia A-Z del lote)
+    y un nuevo certificado en borrador, marcando el anterior como 'superado'.
+    """
+    template_name = "certificados/editar_certificado.html"
+    allowed_roles = ["calidad", "lab"]
+
+    def _get_certificado(self, pk):
+        return get_object_or_404(
+            Certificado.objects.select_related("inspeccion__lote__pedido__cliente"),
+            pk=pk,
+        )
+
+    def get(self, request, pk):
+        from django.shortcuts import render
+        certificado = self._get_certificado(pk)
+        # Pre-cargamos un formset con los resultados actuales como punto de partida
+        instance = Inspeccion(lote=certificado.inspeccion.lote, equipo=certificado.inspeccion.equipo)
+        initial = [
+            {"parametro": r.parametro_id, "valor_obtenido": r.valor_obtenido}
+            for r in certificado.inspeccion.resultados.select_related("parametro")
+        ]
+        FormSet = inlineformset_factory(
+            Inspeccion, Resultado,
+            fields=("parametro", "valor_obtenido"),
+            extra=len(initial) or 5, can_delete=False,
+        )
+        formset = FormSet(instance=instance, initial=initial)
+        return render(request, self.template_name, {
+            "certificado": certificado,
+            "formset": formset,
+        })
+
+    def post(self, request, pk):
+        from django.shortcuts import render
+        certificado = self._get_certificado(pk)
+        lote = certificado.inspeccion.lote
+
+        nueva_letra = _next_secuencia_lote(lote.pedido)
+        if not nueva_letra:
+            messages.error(
+                request,
+                "El pedido ya alcanzó las 26 secuencias (A–Z); no se puede generar un re-análisis.",
+            )
+            return redirect("consulta_certificados")
+
+        # Crear nuevo Lote con la siguiente letra (mismo codigo_lote del pedido)
+        with transaction.atomic():
+            nuevo_lote = Lote.objects.create(
+                pedido=lote.pedido,
+                codigo_lote=lote.codigo_lote,
+                secuencia=nueva_letra,
+            )
+            nueva_inspeccion = Inspeccion.objects.create(
+                lote=nuevo_lote,
+                equipo=certificado.inspeccion.equipo,
+                inspeccion_origen=certificado.inspeccion,
+            )
+
+            FormSet = inlineformset_factory(
+                Inspeccion, Resultado,
+                fields=("parametro", "valor_obtenido"),
+                extra=0, can_delete=False,
+            )
+            formset = FormSet(request.POST, instance=nueva_inspeccion)
+            if not formset.is_valid():
+                # roll back los registros recién creados
+                transaction.set_rollback(True)
+                return render(request, self.template_name, {
+                    "certificado": certificado,
+                    "formset": formset,
+                })
+            formset.save()
+
+            cumple = _evaluar_cumple(nueva_inspeccion)
+            nueva_inspeccion.cumple_param = cumple
+            nueva_inspeccion.save()
+
+            # Marcar el certificado anterior como superado
+            certificado.estado = "superado"
+            certificado.save(update_fields=["estado"])
+
+        messages.success(
+            request,
+            f"Re-análisis registrado como inspección {lote.codigo_lote}{nueva_letra}. "
+            "Si cumple, se generará un nuevo certificado en borrador.",
+        )
+        return redirect("consulta_certificados")
+
+
+# ---------------------------------------------------------------------------
+# Almacén — Registro de despacho
+# ---------------------------------------------------------------------------
+class PendientesDespachoView(LoginRequiredMixin, RoleRequiredMixin, ListView):
+    model = Certificado
+    template_name = "certificados/pendientes_despacho.html"
+    context_object_name = "certificados"
+    allowed_roles = ["almacen"]
+
+    def get_queryset(self):
+        return (
+            Certificado.objects.filter(estado="aprobado")
+            .select_related("inspeccion__lote", "pedido__cliente")
+            .order_by("fecha_aprobacion")
+        )
+
+
+class RegistrarDespachoView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
+    model = Certificado
+    fields = ["numero_factura", "cantidad_total_entrega", "fecha_caducidad"]
+    template_name = "certificados/registrar_despacho.html"
+    success_url = reverse_lazy("pendientes_despacho")
+    allowed_roles = ["almacen"]
+
+    def get_queryset(self):
+        return Certificado.objects.filter(estado="aprobado")
+
+    def form_valid(self, form):
+        with transaction.atomic():
+            self.object = form.save(commit=False)
+            self.object.estado = "despachado"
+            self.object.fecha_envio = timezone.now()
+            self.object.save()
+        messages.success(
+            self.request,
+            f"Despacho del certificado #{self.object.id} registrado correctamente."
+        )
+        return redirect(self.success_url)
+
+
+# ---------------------------------------------------------------------------
+# Administración — Catálogos (CRUD)
+# ---------------------------------------------------------------------------
+class AdminOnlyMixin(UserPassesTestMixin):
+    def test_func(self):
+        return self.request.user.is_authenticated and self.request.user.rol == "admin"
+
+
+class CatalogoFormMixin:
+    """Inyecta título y URL de regreso al template de formulario."""
+    entidad = ""
+    cancel_url_name = ""
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["entidad"] = self.entidad
+        ctx["cancel_url"] = reverse(self.cancel_url_name)
+        ctx["es_edicion"] = self.object is not None and self.object.pk is not None
+        return ctx
+
+
+# --- Clientes ---
+class ClienteListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
+    model = Cliente
+    template_name = "certificados/admin/cliente_list.html"
+    context_object_name = "clientes"
+    ordering = ["-activo", "nombre"]
+
+
+_CLIENTE_FIELDS = [
+    "nombre", "rfc", "domicilio_entrega", "contacto",
+    "correo_contacto", "requiere_certificado", "clave_doc_especificaciones",
+]
+
+
+class ClienteCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView):
+    model = Cliente
+    fields = _CLIENTE_FIELDS
+    template_name = "certificados/admin/cliente_form.html"
+    success_url = reverse_lazy("cliente_list")
+    entidad = "Cliente"
+    cancel_url_name = "cliente_list"
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Cliente '{form.cleaned_data['nombre']}' creado.")
+        return super().form_valid(form)
+
+
+class ClienteUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView):
+    model = Cliente
+    fields = _CLIENTE_FIELDS
+    template_name = "certificados/admin/cliente_form.html"
+    success_url = reverse_lazy("cliente_list")
+    entidad = "Cliente"
+    cancel_url_name = "cliente_list"
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Cliente '{form.cleaned_data['nombre']}' actualizado.")
+        return super().form_valid(form)
+
+
+class ClienteBajaView(LoginRequiredMixin, AdminOnlyMixin, View):
+    def post(self, request, pk):
+        cliente = get_object_or_404(Cliente, pk=pk)
+        causa = request.POST.get("causa_baja", "").strip()
+        if cliente.activo:
+            cliente.activo = False
+            cliente.causa_baja = causa or "Sin especificar"
+            cliente.fecha_baja = timezone.now()
+            cliente.save()
+            messages.success(request, f"Cliente '{cliente.nombre}' dado de baja.")
+        else:
+            cliente.activo = True
+            cliente.causa_baja = None
+            cliente.fecha_baja = None
+            cliente.save()
+            messages.success(request, f"Cliente '{cliente.nombre}' reactivado.")
+        return redirect("cliente_list")
+
+
+# --- Parámetros por cliente ---
+class ParametroClienteListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
+    model = ParametroCliente
+    template_name = "certificados/admin/parametro_cliente_list.html"
+    context_object_name = "parametros_cliente"
+
+    def get_queryset(self):
+        return ParametroCliente.objects.filter(cliente_id=self.kwargs["cliente_id"]).select_related("parametro")
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["cliente"] = get_object_or_404(Cliente, pk=self.kwargs["cliente_id"])
+        return ctx
+
+
+class ParametroClienteCreateView(LoginRequiredMixin, AdminOnlyMixin, CreateView):
+    model = ParametroCliente
+    fields = ["parametro", "ref_min", "ref_max", "activo"]
+    template_name = "certificados/admin/parametro_cliente_form.html"
+
+    def dispatch(self, request, *args, **kwargs):
+        self.cliente = get_object_or_404(Cliente, pk=self.kwargs["cliente_id"])
+        return super().dispatch(request, *args, **kwargs)
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["cliente"] = self.cliente
+        return ctx
+
+    def form_valid(self, form):
+        form.instance.cliente = self.cliente
+        messages.success(self.request, "Parámetro del cliente guardado.")
+        return super().form_valid(form)
+
+    def get_success_url(self):
+        return reverse("parametro_cliente_list", kwargs={"cliente_id": self.cliente.id})
+
+
+class ParametroClienteUpdateView(LoginRequiredMixin, AdminOnlyMixin, UpdateView):
+    model = ParametroCliente
+    fields = ["parametro", "ref_min", "ref_max", "activo"]
+    template_name = "certificados/admin/parametro_cliente_form.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["cliente"] = self.object.cliente
+        return ctx
+
+    def get_success_url(self):
+        return reverse("parametro_cliente_list", kwargs={"cliente_id": self.object.cliente_id})
+
+
+class ParametroClienteDeleteView(LoginRequiredMixin, AdminOnlyMixin, View):
+    def post(self, request, pk):
+        pc = get_object_or_404(ParametroCliente, pk=pk)
+        cliente_id = pc.cliente_id
+        pc.delete()
+        messages.success(request, "Parámetro del cliente eliminado.")
+        return redirect("parametro_cliente_list", cliente_id=cliente_id)
+
+
+# --- Equipos ---
+class EquipoListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
+    model = Equipo
+    template_name = "certificados/admin/equipo_list.html"
+    context_object_name = "equipos"
+    ordering = ["-activo", "tipo", "serie"]
+
+
+_EQUIPO_FIELDS = [
+    "clave", "tipo", "marca", "modelo", "serie", "responsable",
+    "descripcion_corta", "descripcion_larga", "proveedor",
+    "fecha_adquisicion", "garantia_hasta", "ubicacion", "mantenimiento",
+]
+
+
+class EquipoCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView):
+    model = Equipo
+    fields = _EQUIPO_FIELDS
+    template_name = "certificados/admin/equipo_form.html"
+    success_url = reverse_lazy("equipo_list")
+    entidad = "Equipo"
+    cancel_url_name = "equipo_list"
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Equipo '{form.cleaned_data['serie']}' creado.")
+        return super().form_valid(form)
+
+
+class EquipoUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView):
+    model = Equipo
+    fields = _EQUIPO_FIELDS
+    template_name = "certificados/admin/equipo_form.html"
+    success_url = reverse_lazy("equipo_list")
+    entidad = "Equipo"
+    cancel_url_name = "equipo_list"
+
+    def form_valid(self, form):
+        messages.success(self.request, f"Equipo '{form.cleaned_data['serie']}' actualizado.")
+        return super().form_valid(form)
+
+
+class EquipoBajaView(LoginRequiredMixin, AdminOnlyMixin, View):
+    def post(self, request, pk):
+        equipo = get_object_or_404(Equipo, pk=pk)
+        causa = request.POST.get("causa_baja", "").strip()
+        if equipo.activo:
+            equipo.activo = False
+            equipo.causa_baja = causa or "Sin especificar"
+            equipo.fecha_baja = timezone.now()
+            equipo.save()
+            messages.success(request, f"Equipo '{equipo.serie}' dado de baja.")
+        else:
+            equipo.activo = True
+            equipo.causa_baja = None
+            equipo.fecha_baja = None
+            equipo.save()
+            messages.success(request, f"Equipo '{equipo.serie}' reactivado.")
+        return redirect("equipo_list")
+
+
+# --- Parámetros (catálogo de factores) ---
+class ParametroListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
+    model = Parametro
+    template_name = "certificados/admin/parametro_list.html"
+    context_object_name = "parametros"
+    ordering = ["-activo", "equipo__tipo", "nombre"]
+
+
+_PARAMETRO_FIELDS = [
+    "equipo", "clave_factor", "nombre", "unidad",
+    "ref_min", "ref_max", "desviacion", "especificacion_interna", "activo",
+]
+
+
+class ParametroCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView):
+    model = Parametro
+    fields = _PARAMETRO_FIELDS
+    template_name = "certificados/admin/parametro_form.html"
+    success_url = reverse_lazy("parametro_list")
+    entidad = "Parámetro"
+    cancel_url_name = "parametro_list"
+
+
+class ParametroUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView):
+    model = Parametro
+    fields = _PARAMETRO_FIELDS
+    template_name = "certificados/admin/parametro_form.html"
+    success_url = reverse_lazy("parametro_list")
+    entidad = "Parámetro"
+    cancel_url_name = "parametro_list"
+
+
+class ParametroBajaView(LoginRequiredMixin, AdminOnlyMixin, View):
+    def post(self, request, pk):
+        p = get_object_or_404(Parametro, pk=pk)
+        p.activo = not p.activo
+        p.save(update_fields=["activo"])
+        messages.success(request, f"Parámetro '{p.nombre}' {'reactivado' if p.activo else 'desactivado'}.")
+        return redirect("parametro_list")
+
+
+# --- Productos ---
+class ProductoListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
+    model = Producto
+    template_name = "certificados/admin/producto_list.html"
+    context_object_name = "productos"
+    ordering = ["-activo", "nombre"]
+
+
+class ProductoCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView):
+    model = Producto
+    fields = ["codigo", "nombre", "descripcion", "activo"]
+    template_name = "certificados/admin/producto_form.html"
+    success_url = reverse_lazy("producto_list")
+    entidad = "Producto"
+    cancel_url_name = "producto_list"
+
+
+class ProductoUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView):
+    model = Producto
+    fields = ["codigo", "nombre", "descripcion", "activo"]
+    template_name = "certificados/admin/producto_form.html"
+    success_url = reverse_lazy("producto_list")
+    entidad = "Producto"
+    cancel_url_name = "producto_list"
+
+
+class ProductoBajaView(LoginRequiredMixin, AdminOnlyMixin, View):
+    def post(self, request, pk):
+        p = get_object_or_404(Producto, pk=pk)
+        p.activo = not p.activo
+        p.save(update_fields=["activo"])
+        messages.success(request, f"Producto '{p.nombre}' {'reactivado' if p.activo else 'desactivado'}.")
+        return redirect("producto_list")
+
+
+# ---------------------------------------------------------------------------
+# Estadísticas — Dashboard con gráficas
+# ---------------------------------------------------------------------------
+class EstadisticasView(LoginRequiredMixin, RoleRequiredMixin, TemplateView):
+    template_name = "certificados/estadisticas.html"
+    allowed_roles = ["calidad", "consulta"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+
+        hoy = timezone.now()
+        inicio = (hoy - timedelta(days=365)).replace(day=1)
+        por_mes = (
+            Certificado.objects.filter(fecha_emision__gte=inicio)
+            .annotate(mes=TruncMonth("fecha_emision"))
+            .values("mes")
+            .annotate(total=Count("id"))
+            .order_by("mes")
+        )
+        meses_labels = [row["mes"].strftime("%b %Y") for row in por_mes]
+        meses_data = [row["total"] for row in por_mes]
+
+        por_estado_cert = dict(
+            Certificado.objects.values_list("estado")
+            .annotate(total=Count("id"))
+            .values_list("estado", "total")
+        )
+        estado_labels = [label for _, label in Certificado.ESTADOS]
+        estado_data = [por_estado_cert.get(code, 0) for code, _ in Certificado.ESTADOS]
+
+        por_estado_ped = dict(
+            Pedido.objects.values_list("estado")
+            .annotate(total=Count("id"))
+            .values_list("estado", "total")
+        )
+        ped_labels = [label for _, label in Pedido.ESTADOS]
+        ped_data = [por_estado_ped.get(code, 0) for code, _ in Pedido.ESTADOS]
+
+        top_clientes = (
+            Cliente.objects.annotate(num_cert=Count("pedido__certificado"))
+            .filter(num_cert__gt=0)
+            .order_by("-num_cert")[:5]
+        )
+        clientes_labels = [c.nombre for c in top_clientes]
+        clientes_data = [c.num_cert for c in top_clientes]
+
+        total_insp = Inspeccion.objects.count()
+        cumplen = Inspeccion.objects.filter(cumple_param=True).count()
+        no_cumplen = total_insp - cumplen
+        tasa = round(cumplen * 100 / total_insp, 1) if total_insp else 0
+
+        ctx.update({
+            "meses_labels": meses_labels,
+            "meses_data": meses_data,
+            "estado_labels": estado_labels,
+            "estado_data": estado_data,
+            "ped_labels": ped_labels,
+            "ped_data": ped_data,
+            "clientes_labels": clientes_labels,
+            "clientes_data": clientes_data,
+            "total_insp": total_insp,
+            "cumplen": cumplen,
+            "no_cumplen": no_cumplen,
+            "tasa": tasa,
+            "total_certificados": Certificado.objects.count(),
+            "total_aprobados": Certificado.objects.filter(estado="aprobado").count(),
+            "total_despachados": Certificado.objects.filter(estado="despachado").count(),
+            "total_leidos": Certificado.objects.filter(leido_cliente=True).count(),
+        })
+        return ctx
+
+
+# ---------------------------------------------------------------------------
+# Trazabilidad — Historial por lote
+# ---------------------------------------------------------------------------
+class HistorialLoteView(LoginRequiredMixin, TemplateView):
+    template_name = "certificados/historial_lote.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        lote = get_object_or_404(
+            Lote.objects.select_related("pedido__cliente"),
+            pk=self.kwargs["pk"],
+        )
+        inspecciones = (
+            Inspeccion.objects.filter(lote=lote)
+            .select_related("equipo")
+            .prefetch_related("resultados__parametro")
+            .order_by("fecha_inspeccion")
+        )
+        certificados = (
+            Certificado.objects.filter(inspeccion__lote=lote)
+            .select_related("aprobado_por")
+            .order_by("fecha_emision")
+        )
+
+        overrides = {
+            pc.parametro_id: (pc.ref_min, pc.ref_max)
+            for pc in ParametroCliente.objects.filter(
+                cliente_id=lote.pedido.cliente_id, activo=True
+            )
+        }
+
+        bloques = []
+        for insp in inspecciones:
+            filas = []
+            for res in insp.resultados.all():
+                rmin, rmax = overrides.get(
+                    res.parametro_id,
+                    (res.parametro.ref_min, res.parametro.ref_max),
+                )
+                filas.append({
+                    "parametro": res.parametro,
+                    "valor": res.valor_obtenido,
+                    "ref_min": rmin,
+                    "ref_max": rmax,
+                    "cumple": rmin <= res.valor_obtenido <= rmax,
+                    "fuente": "Cliente" if res.parametro_id in overrides else "Global",
+                    "desvio": res.desvio_vs_ref,
+                })
+            bloques.append({"inspeccion": insp, "filas": filas})
+
+        ctx.update({
+            "lote": lote,
+            "pedido": lote.pedido,
+            "cliente": lote.pedido.cliente,
+            "bloques": bloques,
+            "certificados": certificados,
+        })
+        return ctx
+
+
+class HistorialLoteIndexView(LoginRequiredMixin, ListView):
+    model = Lote
+    template_name = "certificados/historial_index.html"
+    context_object_name = "lotes"
+    paginate_by = 25
+
+    def get_queryset(self):
+        return (
+            Lote.objects.select_related("pedido__cliente")
+            .order_by("-id")
+        )

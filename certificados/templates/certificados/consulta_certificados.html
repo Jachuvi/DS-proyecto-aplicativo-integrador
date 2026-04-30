@@ -29,7 +29,9 @@
                         <th>Pedido</th>
                         <th>Fecha Emisión</th>
                         <th>Estado</th>
-                        <th class="text-end">PDF</th>
+                        <th>Caducidad</th>
+                        <th>Factura</th>
+                        <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -40,25 +42,60 @@
                         <td>#{{ certificado.pedido.id }} — {{ certificado.pedido.cliente }}</td>
                         <td>{{ certificado.fecha_emision|date:"d/m/Y H:i" }}</td>
                         <td>
-                            {% if certificado.enviado %}
-                            <span class="badge bg-success">Enviado</span>
+                            {% if certificado.estado == 'borrador' %}
+                            <span class="badge bg-secondary">Borrador</span>
+                            {% elif certificado.estado == 'aprobado' %}
+                            <span class="badge bg-info text-dark">Aprobado</span>
+                            {% elif certificado.estado == 'despachado' %}
+                            <span class="badge bg-success">Despachado</span>
+                            {% elif certificado.estado == 'rechazado' %}
+                            <span class="badge bg-danger">Rechazado</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if certificado.fecha_caducidad %}
+                            {{ certificado.fecha_caducidad|date:"d/m/Y" }}
                             {% else %}
-                            <span class="badge bg-warning text-dark">Pendiente</span>
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if certificado.numero_factura %}
+                            {{ certificado.numero_factura }}
+                            {% else %}
+                            <span class="text-muted">—</span>
                             {% endif %}
                         </td>
                         <td class="text-end">
-                            {% if certificado.pdf_url %}
-                            <a href="{{ MEDIA_URL }}{{ certificado.pdf_url }}" target="_blank" class="btn-brand-outline">
-                                <i class="bi bi-file-pdf"></i> Ver PDF
-                            </a>
-                            {% else %}
-                            <span class="text-muted">N/A</span>
-                            {% endif %}
+                            <div class="d-inline-flex gap-2">
+                                {% if certificado.pdf_url %}
+                                <a href="{{ MEDIA_URL }}{{ certificado.pdf_url }}" target="_blank" class="btn-brand-outline">
+                                    <i class="bi bi-file-pdf"></i> PDF
+                                </a>
+                                {% endif %}
+                                <a href="{% url 'historial_lote' certificado.inspeccion.lote.id %}" class="btn-brand-outline">
+                                    <i class="bi bi-clock-history"></i> Historial
+                                </a>
+                                {% if certificado.estado == 'borrador' and user.rol == 'calidad' or certificado.estado == 'borrador' and user.rol == 'admin' %}
+                                <form method="post" action="{% url 'aprobar_certificado' certificado.id %}" class="d-inline"
+                                      onsubmit="return confirm('¿Aprobar y enviar al cliente el certificado #{{ certificado.id }}?');">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-brand">
+                                        <i class="bi bi-check2-circle"></i> Aprobar
+                                    </button>
+                                </form>
+                                {% endif %}
+                                {% if certificado.estado != 'despachado' and certificado.estado != 'superado' and user.rol == 'calidad' or certificado.estado != 'despachado' and certificado.estado != 'superado' and user.rol == 'admin' or certificado.estado != 'despachado' and certificado.estado != 'superado' and user.rol == 'lab' %}
+                                <a href="{% url 'editar_certificado' certificado.id %}" class="btn-brand-outline" title="Re-análisis">
+                                    <i class="bi bi-arrow-repeat"></i> Re-análisis
+                                </a>
+                                {% endif %}
+                            </div>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="6" class="text-center text-muted py-4">
+                        <td colspan="8" class="text-center text-muted py-4">
                             <i class="bi bi-inbox" style="font-size: 1.8rem; opacity: 0.5;"></i><br>
                             No se encontraron certificados con los filtros aplicados.
                         </td>
