@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse_lazy
-from django.views.generic import ListView, CreateView, UpdateView, DetailView, FormView
+from django.views.generic import ListView, CreateView, UpdateView, DetailView, FormView, TemplateView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.forms import inlineformset_factory, modelform_factory
 from .models import (
@@ -15,6 +15,19 @@ from .models import (
 )
 from django.db import transaction
 import django_filters
+
+
+class HomeView(LoginRequiredMixin, TemplateView):
+    template_name = "certificados/home.html"
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        user = self.request.user
+        ctx["pedidos_pendientes"] = Pedido.objects.filter(estado="pendiente").count()
+        ctx["certificados_totales"] = Certificado.objects.count()
+        ctx["certificados_enviados"] = Certificado.objects.filter(enviado=True).count()
+        ctx["clientes_activos"] = Cliente.objects.filter(activo=True).count()
+        return ctx
 
 
 # Access Control Mixin

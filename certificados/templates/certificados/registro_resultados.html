@@ -1,41 +1,62 @@
 {% extends "base.html" %}
+{% block title %}Registro de Resultados{% endblock %}
+{% block page_title %}Registro de Resultados{% endblock %}
+
 {% block content %}
-<h2>Registro de Resultados de Inspección</h2>
 <form method="post">
     {% csrf_token %}
     <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">Datos de Inspección</h5>
+        <div class="card-body p-4">
+            <h2 class="card-title mb-3">Inspección #{{ object.id }}</h2>
+            <div class="row">
+                <div class="col-md-6"><strong>Lote:</strong> {{ object.lote }}</div>
+                <div class="col-md-6"><strong>Equipo:</strong> {{ object.equipo.get_tipo_display }} — {{ object.equipo.serie }}</div>
+                <div class="col-md-6 mt-2"><strong>Cliente:</strong> {{ object.lote.pedido.cliente }}</div>
+                <div class="col-md-6 mt-2"><strong>Producto:</strong> {{ object.lote.pedido.producto }}</div>
+            </div>
             {{ form.as_p }}
         </div>
     </div>
 
     <div class="card mb-3">
-        <div class="card-body">
-            <h5 class="card-title">Resultados por Parámetro</h5>
+        <div class="card-body p-4">
+            <h2 class="card-title mb-3">Resultados por parámetro</h2>
+            <p class="text-muted mb-3">Captura el valor obtenido para cada parámetro analizado. Los valores se comparan automáticamente contra los rangos de referencia.</p>
             {{ resultados.management_form }}
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Parámetro</th>
-                        <th>Valor Obtenido</th>
-                        <th>Eliminar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for form_res in resultados %}
-                    <tr>
-                        <td>{{ form_res.parametro }}</td>
-                        <td>{{ form_res.valor_obtenido }}</td>
-                        <td>{{ form_res.DELETE }}</td>
-                        {{ form_res.id }}
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+            <div class="table-responsive">
+                <table class="table align-middle">
+                    <thead>
+                        <tr>
+                            <th>Parámetro</th>
+                            <th>Valor obtenido</th>
+                            <th class="text-center">Eliminar</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for form_res in resultados %}
+                        <tr>
+                            <td>{{ form_res.parametro }}</td>
+                            <td>{{ form_res.valor_obtenido }}</td>
+                            <td class="text-center">{{ form_res.DELETE }}</td>
+                            {{ form_res.id }}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
-    
-    <button type="submit" class="btn btn-primary">Guardar Resultados</button>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn-brand">Guardar Resultados</button>
+        <a href="{% url 'recepcion_pedidos' %}" class="btn-brand-outline">Cancelar</a>
+    </div>
 </form>
+
+<script>
+    document.querySelectorAll('form select, form input[type="number"], form input[type="text"], form input[type="email"], form input[type="date"], form textarea').forEach(el => {
+        if (el.tagName === 'SELECT') el.classList.add('form-select');
+        else el.classList.add('form-control');
+    });
+</script>
 {% endblock %}
