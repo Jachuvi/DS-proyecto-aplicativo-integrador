@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+{% block title %}Estadísticas{% endblock %}
+{% block page_title %}Estadísticas y métricas{% endblock %}
+
+{% block extra_head %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+    .kpi-card {
+        background: #fff; border-radius: 12px; padding: 20px;
+        box-shadow: 0 2px 10px rgba(26, 42, 94, 0.06);
+        border-left: 4px solid #1a2a5e;
+    }
+    .kpi-value { font-size: 1.8rem; font-weight: 700; color: #1a2a5e; line-height: 1; }
+    .kpi-label { font-size: 0.85rem; color: #6c757d; margin-top: 6px; }
+    .chart-card {
+        background: #fff; border-radius: 12px; padding: 22px;
+        box-shadow: 0 2px 10px rgba(26, 42, 94, 0.06);
+        height: 100%;
+    }
+    .chart-card h3 {
+        font-size: 1.05rem; color: #1a2a5e; font-weight: 600;
+        margin: 0 0 16px;
+    }
+    .chart-wrap { position: relative; height: 280px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card">
+            <div class="kpi-value">{{ total_certificados }}</div>
+            <div class="kpi-label">Certificados emitidos (total)</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card">
+            <div class="kpi-value">{{ total_aprobados }}</div>
+            <div class="kpi-label">Aprobados pendientes de despacho</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card">
+            <div class="kpi-value">{{ total_despachados }}</div>
+            <div class="kpi-label">Despachados al cliente</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card">
+            <div class="kpi-value">{{ tasa }}%</div>
+            <div class="kpi-label">Tasa de cumplimiento ({{ cumplen }}/{{ total_insp }})</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card">
+            <div class="kpi-value">{{ total_leidos }}</div>
+            <div class="kpi-label">Certificados con acuse de lectura del cliente</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <h3><i class="bi bi-bar-chart-line"></i> Certificados por mes (últimos 12 meses)</h3>
+            <div class="chart-wrap"><canvas id="chartMeses"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card">
+            <h3><i class="bi bi-pie-chart"></i> Certificados por estado</h3>
+            <div class="chart-wrap"><canvas id="chartEstado"></canvas></div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="chart-card">
+            <h3><i class="bi bi-clipboard-data"></i> Pedidos por estado</h3>
+            <div class="chart-wrap"><canvas id="chartPedidos"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="chart-card">
+            <h3><i class="bi bi-trophy"></i> Top 5 clientes (certificados)</h3>
+            <div class="chart-wrap"><canvas id="chartClientes"></canvas></div>
+        </div>
+    </div>
+</div>
+
+{{ meses_labels|json_script:"meses-labels" }}
+{{ meses_data|json_script:"meses-data" }}
+{{ estado_labels|json_script:"estado-labels" }}
+{{ estado_data|json_script:"estado-data" }}
+{{ ped_labels|json_script:"ped-labels" }}
+{{ ped_data|json_script:"ped-data" }}
+{{ clientes_labels|json_script:"clientes-labels" }}
+{{ clientes_data|json_script:"clientes-data" }}
+
+<script>
+(function() {
+    const navy = '#1a2a5e';
+    const palette = ['#1a2a5e', '#2d3f7a', '#4f64a8', '#1d7a43', '#a02525', '#8a6112', '#6c757d'];
+    const readJSON = id => JSON.parse(document.getElementById(id).textContent);
+
+    new Chart(document.getElementById('chartMeses'), {
+        type: 'bar',
+        data: {
+            labels: readJSON('meses-labels'),
+            datasets: [{ label: 'Certificados', data: readJSON('meses-data'), backgroundColor: navy, borderRadius: 6 }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    new Chart(document.getElementById('chartEstado'), {
+        type: 'doughnut',
+        data: { labels: readJSON('estado-labels'), datasets: [{ data: readJSON('estado-data'), backgroundColor: palette }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    new Chart(document.getElementById('chartPedidos'), {
+        type: 'doughnut',
+        data: { labels: readJSON('ped-labels'), datasets: [{ data: readJSON('ped-data'), backgroundColor: palette }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    new Chart(document.getElementById('chartClientes'), {
+        type: 'bar',
+        data: {
+            labels: readJSON('clientes-labels'),
+            datasets: [{ label: 'Certificados', data: readJSON('clientes-data'), backgroundColor: navy, borderRadius: 6 }]
+        },
+        options: {
+            indexAxis: 'y',
+            maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+})();
+</script>
+{% endblock %}

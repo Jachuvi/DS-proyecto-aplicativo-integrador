@@ -262,10 +262,13 @@
             </a>
             {% endif %}
 
-            {% if user.rol == 'calidad' or user.rol == 'admin' %}
+            {% if user.rol == 'calidad' or user.rol == 'admin' or user.rol == 'consulta' %}
             <div class="nav-section">Calidad</div>
-            <a href="{% url 'consulta_certificados' %}" class="{% if request.resolver_match.url_name == 'consulta_certificados' or request.resolver_match.url_name == 'aprobar_certificado' %}active{% endif %}">
+            <a href="{% url 'consulta_certificados' %}" class="{% if request.resolver_match.url_name == 'consulta_certificados' or request.resolver_match.url_name == 'aprobar_certificado' or request.resolver_match.url_name == 'editar_certificado' %}active{% endif %}">
                 <i class="bi bi-award"></i> Consultar Certificados
+            </a>
+            <a href="{% url 'estadisticas' %}" class="{% if request.resolver_match.url_name == 'estadisticas' %}active{% endif %}">
+                <i class="bi bi-bar-chart-line"></i> Estadísticas
             </a>
             {% endif %}
 
@@ -273,6 +276,13 @@
             <div class="nav-section">Almacén</div>
             <a href="{% url 'pendientes_despacho' %}" class="{% if request.resolver_match.url_name == 'pendientes_despacho' or request.resolver_match.url_name == 'registrar_despacho' %}active{% endif %}">
                 <i class="bi bi-truck"></i> Despachos Pendientes
+            </a>
+            {% endif %}
+
+            {% if user.rol != 'ventas' %}
+            <div class="nav-section">Trazabilidad</div>
+            <a href="{% url 'historial_index' %}" class="{% if request.resolver_match.url_name == 'historial_index' or request.resolver_match.url_name == 'historial_lote' %}active{% endif %}">
+                <i class="bi bi-clock-history"></i> Historial por lote
             </a>
             {% endif %}
 

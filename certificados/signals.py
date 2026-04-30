@@ -25,13 +25,34 @@ def generar_certificado_borrador(sender, instance, created, **kwargs):
         estado='borrador',
     )
 
+    # Decoramos cada resultado con el rango efectivo (override de cliente o global)
+    cliente = instance.lote.pedido.cliente
+    overrides = {
+        pc.parametro_id: (pc.ref_min, pc.ref_max)
+        for pc in cliente.parametros_cliente.filter(activo=True)
+    }
+    resultados_ext = []
+    for res in instance.resultados.select_related('parametro'):
+        rmin, rmax = overrides.get(
+            res.parametro_id, (res.parametro.ref_min, res.parametro.ref_max)
+        )
+        resultados_ext.append({
+            'parametro': res.parametro,
+            'valor': res.valor_obtenido,
+            'ref_min': rmin,
+            'ref_max': rmax,
+            'desvio': res.desvio_vs_ref,
+            'fuente': 'Cliente' if res.parametro_id in overrides else 'Internacional',
+            'cumple': rmin <= res.valor_obtenido <= rmax,
+        })
+
     context = {
         'certificado': certificado,
         'inspeccion': instance,
-        'resultados': instance.resultados.all(),
+        'resultados': resultados_ext,
         'lote': instance.lote,
         'pedido': instance.lote.pedido,
-        'cliente': instance.lote.pedido.cliente,
+        'cliente': cliente,
     }
     html_content = render_to_string('certificados/pdf_template.html', context)
 

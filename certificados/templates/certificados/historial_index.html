@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Trazabilidad{% endblock %}
+{% block page_title %}Trazabilidad por lote{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-1">Historial de lotes</h2>
+        <p class="text-muted mb-3">Selecciona un lote para ver su línea de tiempo completa: pedido, inspección, resultados y certificado.</p>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Lote</th>
+                        <th>Pedido</th>
+                        <th>Cliente</th>
+                        <th>Producto</th>
+                        <th>Fecha pedido</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in lotes %}
+                    <tr>
+                        <td><strong>{{ lote.codigo_lote }}{{ lote.secuencia }}</strong></td>
+                        <td>#{{ lote.pedido.id }}</td>
+                        <td>{{ lote.pedido.cliente.nombre }}</td>
+                        <td>{{ lote.pedido.producto }}</td>
+                        <td>{{ lote.pedido.fecha_pedido|date:"d/m/Y H:i" }}</td>
+                        <td class="text-end">
+                            <a href="{% url 'historial_lote' lote.id %}" class="btn-brand-outline">
+                                <i class="bi bi-clock-history"></i> Ver historial
+                            </a>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox" style="font-size: 1.8rem; opacity: 0.5;"></i><br>
+                            No hay lotes registrados.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if is_paginated %}
+        <nav class="mt-3">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">Anterior</a></li>
+                {% endif %}
+                <li class="page-item disabled"><span class="page-link">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span></li>
+                {% if page_obj.has_next %}
+                <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">Siguiente</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -23,7 +23,7 @@
                         <th>Tipo</th>
                         <th>Marca / Modelo</th>
                         <th>Serie</th>
-                        <th>Proveedor</th>
+                        <th>Ubicación</th>
                         <th>Garantía</th>
                         <th class="text-center">Estado</th>
                         <th class="text-end">Acciones</th>
@@ -36,13 +36,13 @@
                         <td>{{ equipo.get_tipo_display }}</td>
                         <td>{{ equipo.marca }} / {{ equipo.modelo }}</td>
                         <td>{{ equipo.serie }}</td>
-                        <td>{{ equipo.proveedor|default:"—" }}</td>
+                        <td>{{ equipo.ubicacion|default:"—" }}</td>
                         <td>{{ equipo.garantia_hasta|date:"d/m/Y"|default:"—" }}</td>
                         <td class="text-center">
                             {% if equipo.activo %}
                             <span class="badge bg-success">Activo</span>
                             {% else %}
-                            <span class="badge bg-secondary">Inactivo</span>
+                            <span class="badge bg-secondary" title="{{ equipo.causa_baja }}">Baja</span>
                             {% endif %}
                         </td>
                         <td class="text-end">
@@ -51,8 +51,9 @@
                                     <i class="bi bi-pencil"></i> Editar
                                 </a>
                                 <form method="post" action="{% url 'equipo_baja' equipo.id %}" class="d-inline"
-                                      onsubmit="return confirm('¿{% if equipo.activo %}Dar de baja{% else %}Reactivar{% endif %} este equipo?');">
+                                      onsubmit="return promptCausa(this, {{ equipo.activo|yesno:'true,false' }});">
                                     {% csrf_token %}
+                                    <input type="hidden" name="causa_baja" value="">
                                     <button type="submit" class="btn-brand-outline">
                                         {% if equipo.activo %}<i class="bi bi-x-circle"></i> Baja{% else %}<i class="bi bi-arrow-counterclockwise"></i> Reactivar{% endif %}
                                     </button>
@@ -73,4 +74,16 @@
         </div>
     </div>
 </div>
+
+<script>
+function promptCausa(form, esActivo) {
+    if (!esActivo) {
+        return confirm('¿Reactivar este equipo?');
+    }
+    var causa = prompt('Causa de la baja del equipo:');
+    if (causa === null) return false;
+    form.querySelector('input[name="causa_baja"]').value = causa;
+    return true;
+}
+</script>
 {% endblock %}

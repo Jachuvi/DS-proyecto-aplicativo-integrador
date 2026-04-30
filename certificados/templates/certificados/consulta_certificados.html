@@ -73,6 +73,9 @@
                                     <i class="bi bi-file-pdf"></i> PDF
                                 </a>
                                 {% endif %}
+                                <a href="{% url 'historial_lote' certificado.inspeccion.lote.id %}" class="btn-brand-outline">
+                                    <i class="bi bi-clock-history"></i> Historial
+                                </a>
                                 {% if certificado.estado == 'borrador' and user.rol == 'calidad' or certificado.estado == 'borrador' and user.rol == 'admin' %}
                                 <form method="post" action="{% url 'aprobar_certificado' certificado.id %}" class="d-inline"
                                       onsubmit="return confirm('¿Aprobar y enviar al cliente el certificado #{{ certificado.id }}?');">
@@ -81,6 +84,11 @@
                                         <i class="bi bi-check2-circle"></i> Aprobar
                                     </button>
                                 </form>
+                                {% endif %}
+                                {% if certificado.estado != 'despachado' and certificado.estado != 'superado' and user.rol == 'calidad' or certificado.estado != 'despachado' and certificado.estado != 'superado' and user.rol == 'admin' or certificado.estado != 'despachado' and certificado.estado != 'superado' and user.rol == 'lab' %}
+                                <a href="{% url 'editar_certificado' certificado.id %}" class="btn-brand-outline" title="Re-análisis">
+                                    <i class="bi bi-arrow-repeat"></i> Re-análisis
+                                </a>
                                 {% endif %}
                             </div>
                         </td>

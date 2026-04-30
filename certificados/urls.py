@@ -15,6 +15,8 @@ urlpatterns = [
     # Calidad
     path('certificados/consulta/', views.ConsultaCertificadosView.as_view(), name='consulta_certificados'),
     path('certificados/<int:pk>/aprobar/', views.AprobarCertificadoView.as_view(), name='aprobar_certificado'),
+    path('certificados/<int:pk>/editar/', views.EditarCertificadoView.as_view(), name='editar_certificado'),
+    path('certificados/<int:pk>/leido.png', views.CertificadoLeidoView.as_view(), name='certificado_leido'),
 
     # Almacén
     path('despacho/pendientes/', views.PendientesDespachoView.as_view(), name='pendientes_despacho'),
@@ -38,7 +40,7 @@ urlpatterns = [
     path('admin-catalogo/equipos/<int:pk>/editar/', views.EquipoUpdateView.as_view(), name='equipo_update'),
     path('admin-catalogo/equipos/<int:pk>/baja/', views.EquipoBajaView.as_view(), name='equipo_baja'),
 
-    # Administración — Parámetros globales
+    # Administración — Parámetros (factores)
     path('admin-catalogo/parametros/', views.ParametroListView.as_view(), name='parametro_list'),
     path('admin-catalogo/parametros/nuevo/', views.ParametroCreateView.as_view(), name='parametro_create'),
     path('admin-catalogo/parametros/<int:pk>/editar/', views.ParametroUpdateView.as_view(), name='parametro_update'),
@@ -49,4 +51,11 @@ urlpatterns = [
     path('admin-catalogo/productos/nuevo/', views.ProductoCreateView.as_view(), name='producto_create'),
     path('admin-catalogo/productos/<int:pk>/editar/', views.ProductoUpdateView.as_view(), name='producto_update'),
     path('admin-catalogo/productos/<int:pk>/baja/', views.ProductoBajaView.as_view(), name='producto_baja'),
+
+    # Estadísticas (calidad / consulta / admin)
+    path('estadisticas/', views.EstadisticasView.as_view(), name='estadisticas'),
+
+    # Trazabilidad por lote
+    path('trazabilidad/', views.HistorialLoteIndexView.as_view(), name='historial_index'),
+    path('trazabilidad/lote/<int:pk>/', views.HistorialLoteView.as_view(), name='historial_lote'),
 ]

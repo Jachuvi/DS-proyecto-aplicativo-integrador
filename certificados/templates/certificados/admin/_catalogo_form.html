@@ -30,5 +30,9 @@
         else if (el.type === 'checkbox' || el.type === 'radio') el.classList.add('form-check-input');
         else if (el.type !== 'hidden' && el.type !== 'submit') el.classList.add('form-control');
     });
+    // Convertir inputs cuyo nombre contiene "fecha" en date pickers
+    document.querySelectorAll('form input[type="text"]').forEach(el => {
+        if (/fecha|garantia/i.test(el.name)) el.type = 'date';
+    });
 </script>
 {% endblock %}

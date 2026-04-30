@@ -182,5 +182,25 @@
         </a>
     </div>
     {% endif %}
+
+    {% if user.rol == 'calidad' or user.rol == 'admin' or user.rol == 'consulta' %}
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'estadisticas' %}" class="action-card">
+            <div class="icon"><i class="bi bi-bar-chart-line"></i></div>
+            <h3>Estadísticas</h3>
+            <p>Indicadores y gráficas: certificados por mes, tasa de cumplimiento, top de clientes.</p>
+        </a>
+    </div>
+    {% endif %}
+
+    {% if user.rol != 'ventas' %}
+    <div class="col-md-4 col-sm-6">
+        <a href="{% url 'historial_index' %}" class="action-card">
+            <div class="icon"><i class="bi bi-clock-history"></i></div>
+            <h3>Trazabilidad por lote</h3>
+            <p>Línea de tiempo completa: pedido, inspección, resultados y certificado.</p>
+        </a>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}

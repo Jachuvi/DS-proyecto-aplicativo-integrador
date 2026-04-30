@@ -28,6 +28,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
         ('almacen', 'Almacén'),
         ('lab', 'Laboratorio'),
         ('calidad', 'Calidad'),
+        ('consulta', 'Consulta (Aseguramiento / Gerencia / Dirección)'),
         ('admin', 'Administrador'),
     )
     nombre = models.CharField(max_length=120)
@@ -35,7 +36,7 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
     rol = models.CharField(max_length=20, choices=ROLES)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
-    
+
     objects = UsuarioManager()
 
     USERNAME_FIELD = 'correo'
@@ -51,6 +52,10 @@ class Cliente(models.Model):
     contacto = models.CharField(max_length=100)
     correo_contacto = models.EmailField()
     requiere_certificado = models.BooleanField(default=True)
+    clave_doc_especificaciones = models.CharField(
+        max_length=80, blank=True, null=True,
+        help_text="Clave del documento de especificaciones del cliente."
+    )
     activo = models.BooleanField(default=True)
     causa_baja = models.CharField(max_length=255, blank=True, null=True)
     fecha_baja = models.DateTimeField(blank=True, null=True)
@@ -85,8 +90,16 @@ class Equipo(models.Model):
     descripcion_corta = models.CharField(max_length=255, blank=True)
     descripcion_larga = models.TextField(blank=True)
     proveedor = models.CharField(max_length=150, blank=True)
+    fecha_adquisicion = models.DateField(blank=True, null=True)
     garantia_hasta = models.DateField(blank=True, null=True)
+    ubicacion = models.CharField(max_length=150, blank=True)
+    mantenimiento = models.TextField(
+        blank=True,
+        help_text="Plan / bitácora resumida de mantenimiento."
+    )
     activo = models.BooleanField(default=True)
+    causa_baja = models.CharField(max_length=255, blank=True, null=True)
+    fecha_baja = models.DateTimeField(blank=True, null=True)
     fecha_alta = models.DateTimeField(auto_now_add=True, null=True)
 
     def __str__(self):
@@ -94,10 +107,35 @@ class Equipo(models.Model):
 
 
 class Parametro(models.Model):
+    """
+    Catálogo de parámetros (factores) de calidad. Pueden ser globales (equipo=null)
+    o específicos del equipo que los analiza, en cuyo caso llevan también la
+    desviación admisible y la especificación interna de la planta.
+    """
+    equipo = models.ForeignKey(
+        Equipo, null=True, blank=True,
+        on_delete=models.CASCADE, related_name='parametros',
+        help_text="Equipo que analiza este factor. Vacío = parámetro global."
+    )
+    clave_factor = models.CharField(max_length=30, blank=True)
     nombre = models.CharField(max_length=100)
     unidad = models.CharField(max_length=20)
-    ref_min = models.DecimalField(max_digits=8, decimal_places=2)
-    ref_max = models.DecimalField(max_digits=8, decimal_places=2)
+    ref_min = models.DecimalField(
+        max_digits=8, decimal_places=2,
+        help_text="Límite inferior de referencia internacional."
+    )
+    ref_max = models.DecimalField(
+        max_digits=8, decimal_places=2,
+        help_text="Límite superior de referencia internacional."
+    )
+    desviacion = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        help_text="Grado de error admisible."
+    )
+    especificacion_interna = models.CharField(
+        max_length=200, blank=True,
+        help_text="Especificación interna de la planta."
+    )
     activo = models.BooleanField(default=True)
 
     def __str__(self):
@@ -152,6 +190,11 @@ class Inspeccion(models.Model):
     equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE)
     fecha_inspeccion = models.DateTimeField(default=timezone.now)
     cumple_param = models.BooleanField(default=False)
+    inspeccion_origen = models.ForeignKey(
+        'self', null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='reanalisis',
+        help_text="Inspección anterior cuando ésta es un re-análisis (caso 2.2.9)."
+    )
 
     def __str__(self):
         return f"Inspección {self.id} - {self.lote}"
@@ -178,6 +221,7 @@ class Certificado(models.Model):
         ('aprobado', 'Aprobado por Calidad'),
         ('despachado', 'Despachado al Cliente'),
         ('rechazado', 'Rechazado'),
+        ('superado', 'Superado por re-análisis'),
     )
 
     inspeccion = models.ForeignKey(Inspeccion, on_delete=models.CASCADE)
@@ -199,6 +243,9 @@ class Certificado(models.Model):
         max_digits=10, decimal_places=2, null=True, blank=True
     )
     fecha_envio = models.DateTimeField(null=True, blank=True)
+
+    leido_cliente = models.BooleanField(default=False)
+    fecha_lectura = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return f"Certificado {self.id} - {self.inspeccion.lote}"

@@ -12,12 +12,35 @@
             <div class="col-md-6 mt-2"><strong>Cantidad:</strong> {{ pedido.cantidad }}</div>
             <div class="col-md-6 mt-2"><strong>Fecha:</strong> {{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</div>
         </div>
+
+        {% if lotes_existentes %}
+        <hr class="my-3">
+        <p class="mb-2"><strong>Lotes ya generados para este pedido:</strong></p>
+        <div class="d-flex flex-wrap gap-2">
+            {% for l in lotes_existentes %}
+            <span class="badge bg-secondary">{{ l.codigo_lote }}{{ l.secuencia }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
 </div>
 
 <div class="card">
     <div class="card-body p-4">
-        <h2 class="card-title mb-4">Datos del Lote</h2>
+        <h2 class="card-title mb-2">Datos del Lote</h2>
+        {% if secuencia_sugerida %}
+        <p class="text-muted small mb-4">
+            <i class="bi bi-info-circle"></i>
+            Secuencia siguiente sugerida para este pedido:
+            <strong class="text-dark">{{ secuencia_sugerida }}</strong>
+            (puedes editarla si requieres otro valor A–Z).
+        </p>
+        {% else %}
+        <div class="alert alert-warning small">
+            <i class="bi bi-exclamation-triangle"></i>
+            Este pedido ya alcanzó las 26 secuencias (A–Z). No se puede crear otro lote.
+        </div>
+        {% endif %}
         <form method="post">
             {% csrf_token %}
             {% for field in form %}
