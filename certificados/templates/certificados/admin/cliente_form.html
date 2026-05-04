@@ -1,1 +1,104 @@
 {% extends "certificados/admin/_catalogo_form.html" %}
+{% block extra_head %}
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async" async defer></script>
+{% endblock %}
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-3">{% if es_edicion %}Editar{% else %}Nuevo{% endif %} {{ entidad }}</h2>
+        <form method="post">
+            {% csrf_token %}
+            {% for field in form %}
+            {% if field.name == 'calle' %}
+            <fieldset class="mb-4 border p-3 rounded">
+                <legend class="h6 mb-3 text-primary">Dirección fiscal</legend>
+                <div class="mb-3">
+                    <label class="form-label">Buscar dirección</label>
+                    <div id="address-autocomplete-container"></div>
+                </div>
+            {% endif %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+            </div>
+            {% if field.name == 'estado' %}
+            </fieldset>
+            {% endif %}
+            {% endfor %}
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn-brand">Guardar</button>
+                <a href="{{ cancel_url }}" class="btn-brand-outline">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+
+async function initAddressAutocomplete() {
+    if (!window.google) {
+        setTimeout(initAddressAutocomplete, 100);
+        return;
+    }
+
+    await google.maps.importLibrary('places');
+
+    const placeAutocomplete = new google.maps.places.PlaceAutocompleteElement({
+        includedRegionCodes: ['mx']
+    });
+
+
+
+    placeAutocomplete.className = 'form-control';
+
+
+    document.getElementById('address-autocomplete-container').appendChild(placeAutocomplete);
+
+    placeAutocomplete.addEventListener('gmp-select', async (event) => {
+        const placePrediction = event.placePrediction;
+        const place = placePrediction.toPlace();
+
+        await place.fetchFields({
+            fields: ['addressComponents']
+        });
+
+        const components = {
+            street_number: 'numero_exterior',
+            route: 'calle',
+            sublocality: 'colonia',
+            neighborhood: 'colonia',
+            locality: 'ciudad',
+            administrative_area_level_1: 'estado',
+            postal_code: 'codigo_postal'
+        };
+
+        place.addressComponents.forEach((component) => {
+                      console.log(component)
+            component.types.forEach((type) => {
+                const fieldName = components[type];
+                if (fieldName) {
+                    const field = document.querySelector(`[name="${fieldName}"]`);
+                    if (field) {
+                      console.log(field)
+                        field.value = component.longText;
+                    }
+                }
+                if (type === 'street_number') {
+                    const numField = document.querySelector('[name="numero_exterior"]');
+                    if (numField) numField.value = component.shortText;
+                }
+            });
+        });
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initAddressAutocomplete);
+} else {
+    initAddressAutocomplete();
+}
+
+</script>
+{% endblock %}

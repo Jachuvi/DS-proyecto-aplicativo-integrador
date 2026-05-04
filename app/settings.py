@@ -130,3 +130,5 @@ DEFAULT_FROM_EMAIL = 'calidad@empresa.com'
 
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', '')

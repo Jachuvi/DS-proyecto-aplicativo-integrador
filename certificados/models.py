@@ -1,11 +1,16 @@
 from django.db import models
-from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    BaseUserManager,
+    PermissionsMixin,
+)
 from django.utils import timezone
+
 
 class UsuarioManager(BaseUserManager):
     def create_user(self, correo, nombre, rol, password=None):
         if not correo:
-            raise ValueError('El usuario debe tener un correo electrónico')
+            raise ValueError("El usuario debe tener un correo electrónico")
         user = self.model(
             correo=self.normalize_email(correo),
             nombre=nombre,
@@ -15,46 +20,56 @@ class UsuarioManager(BaseUserManager):
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, correo, nombre, rol='admin', password=None):
+    def create_superuser(self, correo, nombre, rol="admin", password=None):
         user = self.create_user(correo, nombre, rol, password)
         user.is_staff = True
         user.is_superuser = True
         user.save(using=self._db)
         return user
 
+
 class Usuario(AbstractBaseUser, PermissionsMixin):
     ROLES = (
-        ('ventas', 'Ventas'),
-        ('almacen', 'Almacén'),
-        ('lab', 'Laboratorio'),
-        ('calidad', 'Calidad'),
-        ('consulta', 'Consulta (Aseguramiento / Gerencia / Dirección)'),
-        ('admin', 'Administrador'),
+        ("lab", "Laboratorio"),
+        ("aseguramineto calidad", "Aseguramiento Calidad"),
+        ("control calidad", "Control calidad"),
+        ("planta", "Planta"),
+        ("operaciones", "Operaciones"),
+        ("admin", "Administrador"),
     )
     nombre = models.CharField(max_length=120)
     correo = models.EmailField(max_length=120, unique=True)
-    rol = models.CharField(max_length=20, choices=ROLES)
+    rol = models.CharField(max_length=30, choices=ROLES)
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
 
     objects = UsuarioManager()
 
-    USERNAME_FIELD = 'correo'
-    REQUIRED_FIELDS = ['nombre', 'rol']
+    USERNAME_FIELD = "correo"
+    REQUIRED_FIELDS = ["nombre", "rol"]
 
     def __str__(self):
         return f"{self.nombre} ({self.rol})"
 
+
 class Cliente(models.Model):
     nombre = models.CharField(max_length=255)
     rfc = models.CharField(max_length=13, unique=True)
-    domicilio_entrega = models.TextField()
+    calle = models.CharField(max_length=150, blank=True, null=True)
+    numero_exterior = models.CharField(max_length=50, blank=True, null=True)
+    numero_interior = models.CharField(max_length=50, blank=True, null=True)
+    colonia = models.CharField(max_length=100, blank=True, null=True)
+    codigo_postal = models.CharField(max_length=5, blank=True, null=True)
+    ciudad = models.CharField(max_length=100, blank=True, null=True)
+    estado = models.CharField(max_length=100, blank=True, null=True)
     contacto = models.CharField(max_length=100)
     correo_contacto = models.EmailField()
     requiere_certificado = models.BooleanField(default=True)
     clave_doc_especificaciones = models.CharField(
-        max_length=80, blank=True, null=True,
-        help_text="Clave del documento de especificaciones del cliente."
+        max_length=80,
+        blank=True,
+        null=True,
+        help_text="Clave del documento de especificaciones del cliente.",
     )
     activo = models.BooleanField(default=True)
     causa_baja = models.CharField(max_length=255, blank=True, null=True)
@@ -78,8 +93,8 @@ class Producto(models.Model):
 
 class Equipo(models.Model):
     TIPOS = (
-        ('alveografo', 'Alveógrafo'),
-        ('farinografo', 'Farinógrafo'),
+        ("alveografo", "Alveógrafo"),
+        ("farinografo", "Farinógrafo"),
     )
     clave = models.CharField(max_length=50)
     tipo = models.CharField(max_length=20, choices=TIPOS)
@@ -94,8 +109,7 @@ class Equipo(models.Model):
     garantia_hasta = models.DateField(blank=True, null=True)
     ubicacion = models.CharField(max_length=150, blank=True)
     mantenimiento = models.TextField(
-        blank=True,
-        help_text="Plan / bitácora resumida de mantenimiento."
+        blank=True, help_text="Plan / bitácora resumida de mantenimiento."
     )
     activo = models.BooleanField(default=True)
     causa_baja = models.CharField(max_length=255, blank=True, null=True)
@@ -112,29 +126,37 @@ class Parametro(models.Model):
     o específicos del equipo que los analiza, en cuyo caso llevan también la
     desviación admisible y la especificación interna de la planta.
     """
+
     equipo = models.ForeignKey(
-        Equipo, null=True, blank=True,
-        on_delete=models.CASCADE, related_name='parametros',
-        help_text="Equipo que analiza este factor. Vacío = parámetro global."
+        Equipo,
+        null=True,
+        blank=True,
+        on_delete=models.CASCADE,
+        related_name="parametros",
+        help_text="Equipo que analiza este factor. Vacío = parámetro global.",
     )
     clave_factor = models.CharField(max_length=30, blank=True)
     nombre = models.CharField(max_length=100)
     unidad = models.CharField(max_length=20)
     ref_min = models.DecimalField(
-        max_digits=8, decimal_places=2,
-        help_text="Límite inferior de referencia internacional."
+        max_digits=8,
+        decimal_places=2,
+        help_text="Límite inferior de referencia internacional.",
     )
     ref_max = models.DecimalField(
-        max_digits=8, decimal_places=2,
-        help_text="Límite superior de referencia internacional."
+        max_digits=8,
+        decimal_places=2,
+        help_text="Límite superior de referencia internacional.",
     )
     desviacion = models.DecimalField(
-        max_digits=8, decimal_places=2, null=True, blank=True,
-        help_text="Grado de error admisible."
+        max_digits=8,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Grado de error admisible.",
     )
     especificacion_interna = models.CharField(
-        max_length=200, blank=True,
-        help_text="Especificación interna de la planta."
+        max_length=200, blank=True, help_text="Especificación interna de la planta."
     )
     activo = models.BooleanField(default=True)
 
@@ -144,38 +166,43 @@ class Parametro(models.Model):
 
 class ParametroCliente(models.Model):
     """Rangos de referencia específicos por cliente (override del global)."""
-    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE, related_name='parametros_cliente')
+
+    cliente = models.ForeignKey(
+        Cliente, on_delete=models.CASCADE, related_name="parametros_cliente"
+    )
     parametro = models.ForeignKey(Parametro, on_delete=models.CASCADE)
     ref_min = models.DecimalField(max_digits=8, decimal_places=2)
     ref_max = models.DecimalField(max_digits=8, decimal_places=2)
     activo = models.BooleanField(default=True)
 
     class Meta:
-        unique_together = ('cliente', 'parametro')
+        unique_together = ("cliente", "parametro")
 
     def __str__(self):
         return f"{self.cliente.nombre} - {self.parametro.nombre}"
 
+
 class Pedido(models.Model):
     ESTADOS = (
-        ('pendiente', 'Pendiente'),
-        ('aceptado', 'Aceptado'),
-        ('rechazado', 'Rechazado'),
-        ('despachado', 'Despachado'),
+        ("pendiente", "Pendiente"),
+        ("aceptado", "Aceptado"),
+        ("rechazado", "Rechazado"),
+        ("despachado", "Despachado"),
     )
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     producto = models.CharField(max_length=255)
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_pedido = models.DateTimeField(default=timezone.now)
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
 
     class Meta:
         indexes = [
-            models.Index(fields=['cliente', 'fecha_pedido']),
+            models.Index(fields=["cliente", "fecha_pedido"]),
         ]
 
     def __str__(self):
         return f"Pedido {self.id} - {self.producto}"
+
 
 class Lote(models.Model):
     pedido = models.ForeignKey(Pedido, on_delete=models.CASCADE)
@@ -185,22 +212,29 @@ class Lote(models.Model):
     def __str__(self):
         return f"{self.codigo_lote}{self.secuencia}"
 
+
 class Inspeccion(models.Model):
     lote = models.ForeignKey(Lote, on_delete=models.CASCADE)
     equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE)
     fecha_inspeccion = models.DateTimeField(default=timezone.now)
     cumple_param = models.BooleanField(default=False)
     inspeccion_origen = models.ForeignKey(
-        'self', null=True, blank=True,
-        on_delete=models.SET_NULL, related_name='reanalisis',
-        help_text="Inspección anterior cuando ésta es un re-análisis (caso 2.2.9)."
+        "self",
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="reanalisis",
+        help_text="Inspección anterior cuando ésta es un re-análisis (caso 2.2.9).",
     )
 
     def __str__(self):
         return f"Inspección {self.id} - {self.lote}"
 
+
 class Resultado(models.Model):
-    inspeccion = models.ForeignKey(Inspeccion, related_name='resultados', on_delete=models.CASCADE)
+    inspeccion = models.ForeignKey(
+        Inspeccion, related_name="resultados", on_delete=models.CASCADE
+    )
     parametro = models.ForeignKey(Parametro, on_delete=models.CASCADE)
     valor_obtenido = models.DecimalField(max_digits=8, decimal_places=2)
     desvio_vs_ref = models.DecimalField(max_digits=8, decimal_places=2, editable=False)
@@ -215,13 +249,14 @@ class Resultado(models.Model):
             self.desvio_vs_ref = 0
         super().save(*args, **kwargs)
 
+
 class Certificado(models.Model):
     ESTADOS = (
-        ('borrador', 'Borrador'),
-        ('aprobado', 'Aprobado por Calidad'),
-        ('despachado', 'Despachado al Cliente'),
-        ('rechazado', 'Rechazado'),
-        ('superado', 'Superado por re-análisis'),
+        ("borrador", "Borrador"),
+        ("aprobado", "Aprobado por Calidad"),
+        ("despachado", "Despachado al Cliente"),
+        ("rechazado", "Rechazado"),
+        ("superado", "Superado por re-análisis"),
     )
 
     inspeccion = models.ForeignKey(Inspeccion, on_delete=models.CASCADE)
@@ -230,10 +265,13 @@ class Certificado(models.Model):
     pdf_url = models.CharField(max_length=255, blank=True, null=True)
     enviado = models.BooleanField(default=False)
 
-    estado = models.CharField(max_length=20, choices=ESTADOS, default='borrador')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="borrador")
     aprobado_por = models.ForeignKey(
-        Usuario, null=True, blank=True,
-        on_delete=models.SET_NULL, related_name='certificados_aprobados'
+        Usuario,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="certificados_aprobados",
     )
     fecha_aprobacion = models.DateTimeField(null=True, blank=True)
     fecha_caducidad = models.DateField(null=True, blank=True)

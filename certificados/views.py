@@ -2,6 +2,7 @@ import os
 import string
 from datetime import timedelta
 
+from django.conf import settings
 from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, CreateView, UpdateView, TemplateView, View
@@ -31,6 +32,7 @@ from .models import (
     Producto,
     Usuario,
 )
+from .forms import ClienteForm
 
 
 # 1x1 transparent PNG used as the email open-tracking pixel
@@ -53,8 +55,12 @@ class HomeView(LoginRequiredMixin, TemplateView):
         ctx["certificados_totales"] = Certificado.objects.count()
         ctx["certificados_enviados"] = Certificado.objects.filter(enviado=True).count()
         ctx["clientes_activos"] = Cliente.objects.filter(activo=True).count()
-        ctx["certificados_por_aprobar"] = Certificado.objects.filter(estado="borrador").count()
-        ctx["certificados_por_despachar"] = Certificado.objects.filter(estado="aprobado").count()
+        ctx["certificados_por_aprobar"] = Certificado.objects.filter(
+            estado="borrador"
+        ).count()
+        ctx["certificados_por_despachar"] = Certificado.objects.filter(
+            estado="aprobado"
+        ).count()
         return ctx
 
 
@@ -68,6 +74,7 @@ class RoleRequiredMixin(UserPassesTestMixin):
     'consulta' tiene acceso de solo lectura: para vistas que listan / consultan
     se debe incluir explícitamente en allowed_roles cuando aplique.
     """
+
     allowed_roles = []
 
     def test_func(self):
@@ -107,9 +114,7 @@ class RecepcionPedidoView(LoginRequiredMixin, RoleRequiredMixin, ListView):
 
 def _next_secuencia_lote(pedido):
     """Devuelve la siguiente letra A-Z disponible para el pedido."""
-    usadas = set(
-        Lote.objects.filter(pedido=pedido).values_list("secuencia", flat=True)
-    )
+    usadas = set(Lote.objects.filter(pedido=pedido).values_list("secuencia", flat=True))
     for letra in string.ascii_uppercase:
         if letra not in usadas:
             return letra
@@ -138,7 +143,9 @@ class IniciarInspeccionView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
         pedido = get_object_or_404(Pedido, id=self.kwargs["pedido_id"])
         context["pedido"] = pedido
         context["equipos"] = Equipo.objects.filter(activo=True)
-        context["lotes_existentes"] = Lote.objects.filter(pedido=pedido).order_by("secuencia")
+        context["lotes_existentes"] = Lote.objects.filter(pedido=pedido).order_by(
+            "secuencia"
+        )
         context["secuencia_sugerida"] = _next_secuencia_lote(pedido)
         return context
 
@@ -152,7 +159,7 @@ class IniciarInspeccionView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
         if Lote.objects.filter(pedido=pedido, secuencia=secuencia).exists():
             form.add_error(
                 "secuencia",
-                f"Ya existe un lote con la secuencia '{secuencia}' para este pedido."
+                f"Ya existe un lote con la secuencia '{secuencia}' para este pedido.",
             )
             return self.form_invalid(form)
 
@@ -207,7 +214,9 @@ class RegistroResultadosView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
         if self.request.POST:
-            data["resultados"] = ResultadoFormSet(self.request.POST, instance=self.object)
+            data["resultados"] = ResultadoFormSet(
+                self.request.POST, instance=self.object
+            )
         else:
             data["resultados"] = ResultadoFormSet(instance=self.object)
         return data
@@ -248,9 +257,12 @@ class ConsultaCertificadosView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     allowed_roles = ["admin", "calidad", "consulta"]
 
     def get_queryset(self):
-        queryset = super().get_queryset().select_related(
-            "inspeccion__lote", "pedido__cliente", "aprobado_por"
-        ).order_by("-fecha_emision")
+        queryset = (
+            super()
+            .get_queryset()
+            .select_related("inspeccion__lote", "pedido__cliente", "aprobado_por")
+            .order_by("-fecha_emision")
+        )
         self.filterset = CertificadoFilter(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -266,13 +278,16 @@ class AprobarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
     calcula fecha de caducidad (6 meses), envía el PDF al cliente
     y notifica al almacén para preparar despacho.
     """
+
     allowed_roles = ["calidad"]
 
     def post(self, request, pk):
         certificado = get_object_or_404(Certificado, pk=pk)
 
         if certificado.estado != "borrador":
-            messages.warning(request, f"El certificado #{certificado.id} ya fue procesado.")
+            messages.warning(
+                request, f"El certificado #{certificado.id} ya fue procesado."
+            )
             return redirect("consulta_certificados")
 
         with transaction.atomic():
@@ -286,8 +301,7 @@ class AprobarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
         self._notificar_almacen(certificado)
 
         messages.success(
-            request,
-            f"Certificado #{certificado.id} aprobado y enviado al cliente."
+            request, f"Certificado #{certificado.id} aprobado y enviado al cliente."
         )
         return redirect("consulta_certificados")
 
@@ -323,7 +337,9 @@ class AprobarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
             email.content_subtype = "html"
             email.body = html_body
             with open(absolute_path, "rb") as f:
-                email.attach(os.path.basename(absolute_path), f.read(), "application/pdf")
+                email.attach(
+                    os.path.basename(absolute_path), f.read(), "application/pdf"
+                )
             email.send()
             certificado.enviado = True
             certificado.save(update_fields=["enviado"])
@@ -332,8 +348,9 @@ class AprobarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
 
     def _notificar_almacen(self, certificado):
         destinatarios = list(
-            Usuario.objects.filter(rol="almacen", is_active=True)
-            .values_list("correo", flat=True)
+            Usuario.objects.filter(rol="almacen", is_active=True).values_list(
+                "correo", flat=True
+            )
         )
         if not destinatarios:
             return
@@ -389,6 +406,7 @@ class EditarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
     genera una NUEVA inspección (con la siguiente secuencia A-Z del lote)
     y un nuevo certificado en borrador, marcando el anterior como 'superado'.
     """
+
     template_name = "certificados/editar_certificado.html"
     allowed_roles = ["calidad", "lab"]
 
@@ -400,26 +418,36 @@ class EditarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
 
     def get(self, request, pk):
         from django.shortcuts import render
+
         certificado = self._get_certificado(pk)
         # Pre-cargamos un formset con los resultados actuales como punto de partida
-        instance = Inspeccion(lote=certificado.inspeccion.lote, equipo=certificado.inspeccion.equipo)
+        instance = Inspeccion(
+            lote=certificado.inspeccion.lote, equipo=certificado.inspeccion.equipo
+        )
         initial = [
             {"parametro": r.parametro_id, "valor_obtenido": r.valor_obtenido}
             for r in certificado.inspeccion.resultados.select_related("parametro")
         ]
         FormSet = inlineformset_factory(
-            Inspeccion, Resultado,
+            Inspeccion,
+            Resultado,
             fields=("parametro", "valor_obtenido"),
-            extra=len(initial) or 5, can_delete=False,
+            extra=len(initial) or 5,
+            can_delete=False,
         )
         formset = FormSet(instance=instance, initial=initial)
-        return render(request, self.template_name, {
-            "certificado": certificado,
-            "formset": formset,
-        })
+        return render(
+            request,
+            self.template_name,
+            {
+                "certificado": certificado,
+                "formset": formset,
+            },
+        )
 
     def post(self, request, pk):
         from django.shortcuts import render
+
         certificado = self._get_certificado(pk)
         lote = certificado.inspeccion.lote
 
@@ -445,18 +473,24 @@ class EditarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
             )
 
             FormSet = inlineformset_factory(
-                Inspeccion, Resultado,
+                Inspeccion,
+                Resultado,
                 fields=("parametro", "valor_obtenido"),
-                extra=0, can_delete=False,
+                extra=0,
+                can_delete=False,
             )
             formset = FormSet(request.POST, instance=nueva_inspeccion)
             if not formset.is_valid():
                 # roll back los registros recién creados
                 transaction.set_rollback(True)
-                return render(request, self.template_name, {
-                    "certificado": certificado,
-                    "formset": formset,
-                })
+                return render(
+                    request,
+                    self.template_name,
+                    {
+                        "certificado": certificado,
+                        "formset": formset,
+                    },
+                )
             formset.save()
 
             cumple = _evaluar_cumple(nueva_inspeccion)
@@ -510,7 +544,7 @@ class RegistrarDespachoView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
             self.object.save()
         messages.success(
             self.request,
-            f"Despacho del certificado #{self.object.id} registrado correctamente."
+            f"Despacho del certificado #{self.object.id} registrado correctamente.",
         )
         return redirect(self.success_url)
 
@@ -525,6 +559,7 @@ class AdminOnlyMixin(UserPassesTestMixin):
 
 class CatalogoFormMixin:
     """Inyecta título y URL de regreso al template de formulario."""
+
     entidad = ""
     cancel_url_name = ""
 
@@ -544,35 +579,47 @@ class ClienteListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
     ordering = ["-activo", "nombre"]
 
 
-_CLIENTE_FIELDS = [
-    "nombre", "rfc", "domicilio_entrega", "contacto",
-    "correo_contacto", "requiere_certificado", "clave_doc_especificaciones",
-]
-
-
-class ClienteCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView):
+class ClienteCreateView(
+    LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView
+):
     model = Cliente
-    fields = _CLIENTE_FIELDS
+    form_class = ClienteForm
     template_name = "certificados/admin/cliente_form.html"
     success_url = reverse_lazy("cliente_list")
     entidad = "Cliente"
     cancel_url_name = "cliente_list"
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["google_maps_api_key"] = settings.GOOGLE_MAPS_API_KEY
+        return ctx
+
     def form_valid(self, form):
-        messages.success(self.request, f"Cliente '{form.cleaned_data['nombre']}' creado.")
+        messages.success(
+            self.request, f"Cliente '{form.cleaned_data['nombre']}' creado."
+        )
         return super().form_valid(form)
 
 
-class ClienteUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView):
+class ClienteUpdateView(
+    LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView
+):
     model = Cliente
-    fields = _CLIENTE_FIELDS
+    form_class = ClienteForm
     template_name = "certificados/admin/cliente_form.html"
     success_url = reverse_lazy("cliente_list")
     entidad = "Cliente"
     cancel_url_name = "cliente_list"
 
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["google_maps_api_key"] = settings.GOOGLE_MAPS_API_KEY
+        return ctx
+
     def form_valid(self, form):
-        messages.success(self.request, f"Cliente '{form.cleaned_data['nombre']}' actualizado.")
+        messages.success(
+            self.request, f"Cliente '{form.cleaned_data['nombre']}' actualizado."
+        )
         return super().form_valid(form)
 
 
@@ -602,7 +649,9 @@ class ParametroClienteListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
     context_object_name = "parametros_cliente"
 
     def get_queryset(self):
-        return ParametroCliente.objects.filter(cliente_id=self.kwargs["cliente_id"]).select_related("parametro")
+        return ParametroCliente.objects.filter(
+            cliente_id=self.kwargs["cliente_id"]
+        ).select_related("parametro")
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -644,7 +693,9 @@ class ParametroClienteUpdateView(LoginRequiredMixin, AdminOnlyMixin, UpdateView)
         return ctx
 
     def get_success_url(self):
-        return reverse("parametro_cliente_list", kwargs={"cliente_id": self.object.cliente_id})
+        return reverse(
+            "parametro_cliente_list", kwargs={"cliente_id": self.object.cliente_id}
+        )
 
 
 class ParametroClienteDeleteView(LoginRequiredMixin, AdminOnlyMixin, View):
@@ -665,13 +716,25 @@ class EquipoListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
 
 
 _EQUIPO_FIELDS = [
-    "clave", "tipo", "marca", "modelo", "serie", "responsable",
-    "descripcion_corta", "descripcion_larga", "proveedor",
-    "fecha_adquisicion", "garantia_hasta", "ubicacion", "mantenimiento",
+    "clave",
+    "tipo",
+    "marca",
+    "modelo",
+    "serie",
+    "responsable",
+    "descripcion_corta",
+    "descripcion_larga",
+    "proveedor",
+    "fecha_adquisicion",
+    "garantia_hasta",
+    "ubicacion",
+    "mantenimiento",
 ]
 
 
-class EquipoCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView):
+class EquipoCreateView(
+    LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView
+):
     model = Equipo
     fields = _EQUIPO_FIELDS
     template_name = "certificados/admin/equipo_form.html"
@@ -684,7 +747,9 @@ class EquipoCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, Cr
         return super().form_valid(form)
 
 
-class EquipoUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView):
+class EquipoUpdateView(
+    LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView
+):
     model = Equipo
     fields = _EQUIPO_FIELDS
     template_name = "certificados/admin/equipo_form.html"
@@ -693,7 +758,9 @@ class EquipoUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, Up
     cancel_url_name = "equipo_list"
 
     def form_valid(self, form):
-        messages.success(self.request, f"Equipo '{form.cleaned_data['serie']}' actualizado.")
+        messages.success(
+            self.request, f"Equipo '{form.cleaned_data['serie']}' actualizado."
+        )
         return super().form_valid(form)
 
 
@@ -725,12 +792,21 @@ class ParametroListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
 
 
 _PARAMETRO_FIELDS = [
-    "equipo", "clave_factor", "nombre", "unidad",
-    "ref_min", "ref_max", "desviacion", "especificacion_interna", "activo",
+    "equipo",
+    "clave_factor",
+    "nombre",
+    "unidad",
+    "ref_min",
+    "ref_max",
+    "desviacion",
+    "especificacion_interna",
+    "activo",
 ]
 
 
-class ParametroCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView):
+class ParametroCreateView(
+    LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView
+):
     model = Parametro
     fields = _PARAMETRO_FIELDS
     template_name = "certificados/admin/parametro_form.html"
@@ -739,7 +815,9 @@ class ParametroCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin,
     cancel_url_name = "parametro_list"
 
 
-class ParametroUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView):
+class ParametroUpdateView(
+    LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView
+):
     model = Parametro
     fields = _PARAMETRO_FIELDS
     template_name = "certificados/admin/parametro_form.html"
@@ -753,7 +831,10 @@ class ParametroBajaView(LoginRequiredMixin, AdminOnlyMixin, View):
         p = get_object_or_404(Parametro, pk=pk)
         p.activo = not p.activo
         p.save(update_fields=["activo"])
-        messages.success(request, f"Parámetro '{p.nombre}' {'reactivado' if p.activo else 'desactivado'}.")
+        messages.success(
+            request,
+            f"Parámetro '{p.nombre}' {'reactivado' if p.activo else 'desactivado'}.",
+        )
         return redirect("parametro_list")
 
 
@@ -765,7 +846,9 @@ class ProductoListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
     ordering = ["-activo", "nombre"]
 
 
-class ProductoCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView):
+class ProductoCreateView(
+    LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView
+):
     model = Producto
     fields = ["codigo", "nombre", "descripcion", "activo"]
     template_name = "certificados/admin/producto_form.html"
@@ -774,7 +857,9 @@ class ProductoCreateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, 
     cancel_url_name = "producto_list"
 
 
-class ProductoUpdateView(LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView):
+class ProductoUpdateView(
+    LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, UpdateView
+):
     model = Producto
     fields = ["codigo", "nombre", "descripcion", "activo"]
     template_name = "certificados/admin/producto_form.html"
@@ -788,7 +873,10 @@ class ProductoBajaView(LoginRequiredMixin, AdminOnlyMixin, View):
         p = get_object_or_404(Producto, pk=pk)
         p.activo = not p.activo
         p.save(update_fields=["activo"])
-        messages.success(request, f"Producto '{p.nombre}' {'reactivado' if p.activo else 'desactivado'}.")
+        messages.success(
+            request,
+            f"Producto '{p.nombre}' {'reactivado' if p.activo else 'desactivado'}.",
+        )
         return redirect("producto_list")
 
 
@@ -843,24 +931,30 @@ class EstadisticasView(LoginRequiredMixin, RoleRequiredMixin, TemplateView):
         no_cumplen = total_insp - cumplen
         tasa = round(cumplen * 100 / total_insp, 1) if total_insp else 0
 
-        ctx.update({
-            "meses_labels": meses_labels,
-            "meses_data": meses_data,
-            "estado_labels": estado_labels,
-            "estado_data": estado_data,
-            "ped_labels": ped_labels,
-            "ped_data": ped_data,
-            "clientes_labels": clientes_labels,
-            "clientes_data": clientes_data,
-            "total_insp": total_insp,
-            "cumplen": cumplen,
-            "no_cumplen": no_cumplen,
-            "tasa": tasa,
-            "total_certificados": Certificado.objects.count(),
-            "total_aprobados": Certificado.objects.filter(estado="aprobado").count(),
-            "total_despachados": Certificado.objects.filter(estado="despachado").count(),
-            "total_leidos": Certificado.objects.filter(leido_cliente=True).count(),
-        })
+        ctx.update(
+            {
+                "meses_labels": meses_labels,
+                "meses_data": meses_data,
+                "estado_labels": estado_labels,
+                "estado_data": estado_data,
+                "ped_labels": ped_labels,
+                "ped_data": ped_data,
+                "clientes_labels": clientes_labels,
+                "clientes_data": clientes_data,
+                "total_insp": total_insp,
+                "cumplen": cumplen,
+                "no_cumplen": no_cumplen,
+                "tasa": tasa,
+                "total_certificados": Certificado.objects.count(),
+                "total_aprobados": Certificado.objects.filter(
+                    estado="aprobado"
+                ).count(),
+                "total_despachados": Certificado.objects.filter(
+                    estado="despachado"
+                ).count(),
+                "total_leidos": Certificado.objects.filter(leido_cliente=True).count(),
+            }
+        )
         return ctx
 
 
@@ -903,24 +997,30 @@ class HistorialLoteView(LoginRequiredMixin, TemplateView):
                     res.parametro_id,
                     (res.parametro.ref_min, res.parametro.ref_max),
                 )
-                filas.append({
-                    "parametro": res.parametro,
-                    "valor": res.valor_obtenido,
-                    "ref_min": rmin,
-                    "ref_max": rmax,
-                    "cumple": rmin <= res.valor_obtenido <= rmax,
-                    "fuente": "Cliente" if res.parametro_id in overrides else "Global",
-                    "desvio": res.desvio_vs_ref,
-                })
+                filas.append(
+                    {
+                        "parametro": res.parametro,
+                        "valor": res.valor_obtenido,
+                        "ref_min": rmin,
+                        "ref_max": rmax,
+                        "cumple": rmin <= res.valor_obtenido <= rmax,
+                        "fuente": "Cliente"
+                        if res.parametro_id in overrides
+                        else "Global",
+                        "desvio": res.desvio_vs_ref,
+                    }
+                )
             bloques.append({"inspeccion": insp, "filas": filas})
 
-        ctx.update({
-            "lote": lote,
-            "pedido": lote.pedido,
-            "cliente": lote.pedido.cliente,
-            "bloques": bloques,
-            "certificados": certificados,
-        })
+        ctx.update(
+            {
+                "lote": lote,
+                "pedido": lote.pedido,
+                "cliente": lote.pedido.cliente,
+                "bloques": bloques,
+                "certificados": certificados,
+            }
+        )
         return ctx
 
 
@@ -931,7 +1031,4 @@ class HistorialLoteIndexView(LoginRequiredMixin, ListView):
     paginate_by = 25
 
     def get_queryset(self):
-        return (
-            Lote.objects.select_related("pedido__cliente")
-            .order_by("-id")
-        )
+        return Lote.objects.select_related("pedido__cliente").order_by("-id")
