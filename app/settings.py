@@ -139,3 +139,11 @@ RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "re_123456789")
 RESEND_FROM_EMAIL = os.environ.get("RESEND_FROM_EMAIL", "onboarding@resend.dev")
 # settings.py
 ALLOWED_HOSTS = ["dsanahuacnorte.pythonanywhere.com", "localhost"]
+
+STATIC_URL = "static/"
+
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, "static"),
+]
+
+STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
