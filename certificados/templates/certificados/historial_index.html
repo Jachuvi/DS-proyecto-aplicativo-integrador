@@ -26,7 +26,7 @@
                         <td><strong>{{ lote.codigo_lote }}{{ lote.secuencia }}</strong></td>
                         <td>#{{ lote.pedido.id }}</td>
                         <td>{{ lote.pedido.cliente.nombre }}</td>
-                        <td>{{ lote.pedido.producto }}</td>
+                        <td>{{ lote.pedido.producto.nombre }}</td>
                         <td>{{ lote.pedido.fecha_pedido|date:"d/m/Y H:i" }}</td>
                         <td class="text-end">
                             <a href="{% url 'historial_lote' lote.id %}" class="btn-brand-outline">

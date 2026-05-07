@@ -9,13 +9,23 @@
         <p class="text-muted mb-4">Captura los datos del pedido solicitado por el cliente.</p>
         <form method="post">
             {% csrf_token %}
-            {% for field in form %}
             <div class="mb-3">
-                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+                <label for="{{ form.cliente.id_for_label }}" class="form-label">Cliente</label>
+                {{ form.cliente }}
             </div>
-            {% endfor %}
+            <div class="mb-3">
+                <label for="{{ form.producto.id_for_label }}" class="form-label">Producto</label>
+                <select name="producto" id="id_producto" class="form-select" required>
+                    <option value="">Seleccione un producto...</option>
+                    {% for producto in productos %}
+                    <option value="{{ producto.id }}">{{ producto.codigo }} - {{ producto.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="mb-3">
+                <label for="{{ form.cantidad.id_for_label }}" class="form-label">Cantidad</label>
+                {{ form.cantidad }}
+            </div>
             <div class="d-flex gap-2 mt-4">
                 <button type="submit" class="btn-brand">Guardar Pedido</button>
                 <a href="{% url 'home' %}" class="btn-brand-outline">Cancelar</a>

@@ -23,8 +23,9 @@ urlpatterns = [
     path('calidad/certificados/<int:pk>/editar/', views.EditarCertificadoView.as_view(), name='editar_certificado'),
 
     # Almacén
-    path('despacho/pendientes/', views.PendientesDespachoView.as_view(), name='pendientes_despacho'),
-    path('despacho/<int:pk>/registrar/', views.RegistrarDespachoView.as_view(), name='registrar_despacho'),
+    path('pedidos/pendientes/', views.PendientesDespachoView.as_view(), name='pendientes_despacho'),
+    path('pedidos/<int:pk>/asignar-lote/', views.AsignarLoteView.as_view(), name='asignar_lote'),
+    path('pedidos/<int:pk>/registrar/', views.RegistrarDespachoView.as_view(), name='registrar_despacho'),
     
     # Almacén - Lotes
     path('almacen/lotes/', views.LoteListView.as_view(), name='lote_list'),

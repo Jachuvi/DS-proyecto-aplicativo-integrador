@@ -5,7 +5,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.shortcuts import redirect, get_object_or_404, render
 from django.urls import reverse_lazy, reverse
-from django.views.generic import ListView, CreateView, UpdateView, TemplateView, View
+from django.views.generic import ListView, CreateView, UpdateView, TemplateView, View, DetailView
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib import messages
 from django.core.mail import EmailMessage
@@ -93,6 +93,11 @@ class RegistroDePedidoView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     template_name = "certificados/pedido_form.html"
     success_url = reverse_lazy("iniciar_inspeccion_pendientes")
     allowed_roles = ["ventas"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["productos"] = Producto.objects.filter(activo=True)
+        return ctx
 
     def form_valid(self, form):
         form.instance.estado = "pendiente"
@@ -360,7 +365,7 @@ class AprobarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
                 body=(
                     f"Se aprobó el certificado #{certificado.id} para el pedido "
                     f"#{certificado.pedido.id} del cliente {certificado.pedido.cliente}.\n\n"
-                    f"Producto: {certificado.pedido.producto}\n"
+                    f"Producto: {certificado.pedido.producto.nombre}\n"
                     f"Cantidad: {certificado.pedido.cantidad}\n"
                     f"Lote: {certificado.inspeccion.lote}\n\n"
                     f"Favor de preparar el despacho y registrar el número de factura "
@@ -534,53 +539,102 @@ class LoteCreateView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
         ctx["productos"] = Producto.objects.filter(activo=True)
         return ctx
 
+    def get_form(self, form_class=None):
+        form = super().get_form(form_class)
+        from django import forms
+        form.fields['fecha_caducidad'].widget = forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
+        form.fields['producto'].widget = forms.Select(attrs={'class': 'form-select'})
+        form.fields['cantidad'].widget = forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
+        return form
+
     def form_valid(self, form):
         import random
         import string
         suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
         form.instance.codigo_lote = f"L-{suffix}"
-        form.instance.secuencia = "A"
-        messages.success(self.request, f"Lote '{form.instance.codigo_lote}-A' creado.")
+        form.instance.secuencia = ""
+        messages.success(self.request, f"Lote '{form.instance.codigo_lote}' creado.")
         return super().form_valid(form)
 
 
 # ---------------------------------------------------------------------------
-# Almacén — Registro de despacho
+# Almacén — Pedidos
 # ---------------------------------------------------------------------------
 class PendientesDespachoView(LoginRequiredMixin, RoleRequiredMixin, ListView):
-    model = Certificado
+    model = Pedido
     template_name = "certificados/pendientes_despacho.html"
-    context_object_name = "certificados"
-    allowed_roles = ["almacen"]
+    context_object_name = "pedidos"
+    allowed_roles = ["almacen", "admin"]
 
     def get_queryset(self):
-        return (
-            Certificado.objects.filter(estado="aprobado")
-            .select_related("inspeccion__lote", "pedido__cliente")
-            .order_by("fecha_aprobacion")
-        )
+        queryset = Pedido.objects.select_related("cliente", "producto").order_by("-fecha_pedido")
+        filter_status = self.request.GET.get("filter", "todos")
+        if filter_status == "pendientes":
+            queryset = queryset.filter(estado="pendiente")
+        elif filter_status == "aceptados":
+            queryset = queryset.filter(estado="aceptado")
+        elif filter_status == "despachados":
+            queryset = queryset.filter(estado="despachado")
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["filter"] = self.request.GET.get("filter", "todos")
+        ctx["all_lotes"] = Lote.objects.filter(pedido__isnull=True, activo=True)
+        return ctx
 
 
-class RegistrarDespachoView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
-    model = Certificado
-    fields = ["numero_factura", "cantidad_total_entrega", "fecha_caducidad"]
+class AsignarLoteView(LoginRequiredMixin, RoleRequiredMixin, View):
+    allowed_roles = ["almacen", "admin"]
+
+    def post(self, request, pk):
+        pedido = get_object_or_404(Pedido, pk=pk)
+        lote_id = request.POST.get("lote_id")
+        
+        if not lote_id:
+            messages.error(request, "Debe seleccionar un lote.")
+            return redirect("pendientes_despacho")
+        
+        lote = get_object_or_404(Lote, id=lote_id)
+        
+        if lote.pedido and lote.pedido != pedido:
+            messages.error(request, "El lote ya está asignado a otro pedido.")
+            return redirect("pendientes_despacho")
+        
+        if lote.pedido == pedido:
+            lote.pedido = None
+            lote.save()
+            messages.success(request, f"Lote {lote.codigo_lote} desasignado del pedido.")
+        else:
+            lote.pedido = pedido
+            lote.save()
+            messages.success(request, f"Lote {lote.codigo_lote} asignado al pedido.")
+        
+        return redirect("pendientes_despacho")
+
+
+class RegistrarDespachoView(LoginRequiredMixin, RoleRequiredMixin, View):
+    allowed_roles = ["almacen", "admin"]
+
+    def post(self, request, pk):
+        lote = get_object_or_404(Lote, pk=pk)
+        pedido_id = lote.pedido_id
+        lote.pedido = None
+        lote.save()
+        messages.success(request, f"Lote {lote.codigo_lote}-{lote.secuencia} desasignado del pedido.")
+        return redirect("pendientes_despacho")
+
+
+class RegistrarDespachoView(LoginRequiredMixin, RoleRequiredMixin, DetailView):
+    model = Pedido
     template_name = "certificados/registrar_despacho.html"
-    success_url = reverse_lazy("pendientes_despacho")
-    allowed_roles = ["almacen"]
+    context_object_name = "pedido"
+    allowed_roles = ["almacen", "admin"]
 
-    def get_queryset(self):
-        return Certificado.objects.filter(estado="aprobado")
-
-    def form_valid(self, form):
-        with transaction.atomic():
-            self.object = form.save(commit=False)
-            self.object.estado = "despachado"
-            self.object.fecha_envio = timezone.now()
-            self.object.save()
-        messages.success(
-            self.request,
-            f"Despacho del certificado #{self.object.id} registrado correctamente.",
-        )
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["lotes"] = self.object.lotes.all()
+        return ctx
         return redirect(self.success_url)
 
 

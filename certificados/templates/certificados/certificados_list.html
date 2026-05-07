@@ -34,7 +34,7 @@
                         <td><strong>#{{ cert.id }}</strong></td>
                         <td>{{ cert.inspeccion.lote.codigo_lote }}-{{ cert.inspeccion.lote.secuencia }}</td>
                         <td>{{ cert.pedido.cliente.nombre }}</td>
-                        <td>{{ cert.pedido.producto }}</td>
+                        <td>{{ cert.pedido.producto.nombre }}</td>
                         <td>{{ cert.inspeccion.clave }}</td>
                         <td>
                             {% if cert.estado == 'aprobado' %}

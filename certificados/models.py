@@ -235,7 +235,12 @@ class Pedido(models.Model):
         ("despachado", "Despachado"),
     )
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
-    producto = models.CharField(max_length=255)
+    producto = models.ForeignKey(
+        Producto, 
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True
+    )
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_pedido = models.DateTimeField(default=timezone.now)
     estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
@@ -246,7 +251,8 @@ class Pedido(models.Model):
         ]
 
     def __str__(self):
-        return f"Pedido {self.id} - {self.producto}"
+        product_name = self.producto.nombre if self.producto else self.producto
+        return f"Pedido {self.id} - {product_name}"
 
 
 class Lote(models.Model):
@@ -283,7 +289,7 @@ class Lote(models.Model):
     activo = models.BooleanField(default=True)
     
     def __str__(self):
-        return f"{self.codigo_lote}-{self.secuencia}"
+        return self.codigo_lote
     
     def save(self, *args, **kwargs):
         if not self.codigo_lote:
@@ -314,8 +320,8 @@ class Inspeccion(models.Model):
             import string
             count = Inspeccion.objects.filter(lote=self.lote).count()
             letra = string.ascii_uppercase[count] if count < 26 else "Z"
-            lote_id_short = self.lote.codigo_lote.replace("L-", "") if self.lote.codigo_lote else str(self.lote.id)
-            self.clave = f"{letra}-{lote_id_short}"
+            lote_id_only = self.lote.codigo_lote.replace("L-", "") if self.lote.codigo_lote else str(self.lote.id)
+            self.clave = f"{letra}-{lote_id_only}"
         super().save(*args, **kwargs)
 
     def __str__(self):

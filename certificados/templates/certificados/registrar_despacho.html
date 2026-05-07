@@ -1,47 +1,64 @@
 {% extends "base.html" %}
-{% block title %}Registrar Despacho{% endblock %}
-{% block page_title %}Registrar Despacho{% endblock %}
+{% block title %}Detalle Pedido{% endblock %}
+{% block page_title %}Detalle Pedido{% endblock %}
 
 {% block content %}
 <div class="card mb-3">
     <div class="card-body p-4">
-        <h2 class="card-title mb-3">Certificado #{{ object.id }}</h2>
+        <h2 class="card-title mb-3">Pedido #{{ pedido.id }}</h2>
         <div class="row">
-            <div class="col-md-6"><strong>Cliente:</strong> {{ object.pedido.cliente }}</div>
-            <div class="col-md-6"><strong>Producto:</strong> {{ object.pedido.producto }}</div>
-            <div class="col-md-6 mt-2"><strong>Cantidad pedida:</strong> {{ object.pedido.cantidad }}</div>
-            <div class="col-md-6 mt-2"><strong>Lote:</strong> {{ object.inspeccion.lote }}</div>
-            <div class="col-md-6 mt-2"><strong>Fecha de aprobación:</strong> {{ object.fecha_aprobacion|date:"d/m/Y H:i" }}</div>
-            <div class="col-md-6 mt-2"><strong>Válido hasta:</strong> {{ object.fecha_caducidad|date:"d/m/Y"|default:"—" }}</div>
+            <div class="col-md-6"><strong>Cliente:</strong> {{ pedido.cliente.nombre }}</div>
+            <div class="col-md-6"><strong>Producto:</strong> {{ pedido.producto.nombre|default:"-" }}</div>
+            <div class="col-md-6 mt-2"><strong>Cantidad:</strong> {{ pedido.cantidad }}</div>
+            <div class="col-md-6 mt-2"><strong>Fecha:</strong> {{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</div>
+            <div class="col-md-6 mt-2"><strong>Estado:</strong> 
+                {% if pedido.estado == 'pendiente' %}
+                <span class="badge bg-warning text-dark">{{ pedido.get_estado_display }}</span>
+                {% elif pedido.estado == 'aceptado' %}
+                <span class="badge bg-success">{{ pedido.get_estado_display }}</span>
+                {% elif pedido.estado == 'rechazado' %}
+                <span class="badge bg-danger">{{ pedido.get_estado_display }}</span>
+                {% elif pedido.estado == 'despachado' %}
+                <span class="badge bg-primary">{{ pedido.get_estado_display }}</span>
+                {% endif %}
+            </div>
         </div>
     </div>
 </div>
 
-<div class="card">
+{% if lotes %}
+<div class="card mb-3">
     <div class="card-body p-4">
-        <h2 class="card-title mb-3">Datos de despacho</h2>
-        <form method="post">
-            {% csrf_token %}
-            {% for field in form %}
-            <div class="mb-3">
-                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
-            </div>
-            {% endfor %}
-            <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn-brand">Confirmar Despacho</button>
-                <a href="{% url 'pendientes_despacho' %}" class="btn-brand-outline">Cancelar</a>
-            </div>
-        </form>
+        <h2 class="card-title mb-3">Lotes Asociados</h2>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Lote</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Fecha Producción</th>
+                        <th>Caducidad</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in lotes %}
+                    <tr>
+                        <td><strong>{{ lote.codigo_lote }}</strong></td>
+                        <td>{{ lote.producto.nombre|default:"-" }}</td>
+                        <td>{{ lote.cantidad|default:"-" }}</td>
+                        <td>{{ lote.fecha_produccion|date:"d/m/Y"|default:"-" }}</td>
+                        <td>{{ lote.fecha_caducidad|date:"d/m/Y"|default:"-" }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
+{% endif %}
 
-<script>
-    document.querySelectorAll('form input, form select, form textarea').forEach(el => {
-        if (el.tagName === 'SELECT') el.classList.add('form-select');
-        else if (el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'hidden' && el.type !== 'submit')
-            el.classList.add('form-control');
-    });
-</script>
+<div class="d-flex gap-2 mt-4">
+    <a href="{% url 'pendientes_despacho' %}" class="btn-brand-outline">Volver</a>
+</div>
 {% endblock %}

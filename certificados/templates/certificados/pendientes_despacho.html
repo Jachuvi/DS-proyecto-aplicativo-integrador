@@ -5,8 +5,24 @@
 {% block content %}
 <div class="card">
     <div class="card-body p-4">
-        <h2 class="card-title mb-1">Pedidos Pendientes</h2>
-        <p class="text-muted mb-4">Captura el número de factura y la cantidad entregada para registrar el despacho.</p>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="card-title mb-0">Pedidos</h2>
+        </div>
+
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link {% if filter == 'todos' %}active{% endif %}" href="?filter=todos">Todos</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if filter == 'pendientes' %}active{% endif %}" href="?filter=pendientes">Pendientes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if filter == 'aceptados' %}active{% endif %}" href="?filter=aceptados">Aceptados</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if filter == 'despachados' %}active{% endif %}" href="?filter=despachados">Despachados</a>
+            </li>
+        </ul>
 
         <div class="table-responsive">
             <table class="table align-middle">
@@ -16,38 +32,51 @@
                         <th>Cliente</th>
                         <th>Producto</th>
                         <th>Cantidad</th>
+                        <th>Fecha</th>
                         <th>Lote</th>
-                        <th>Aprobado</th>
+                        <th>Estado</th>
                         <th class="text-end">Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
-                    {% for certificado in certificados %}
+                    {% for pedido in pedidos %}
                     <tr>
-                        <td><strong>#{{ certificado.id }}</strong></td>
-                        <td>{{ certificado.pedido.cliente }}</td>
-                        <td>{{ certificado.pedido.producto }}</td>
-                        <td>{{ certificado.pedido.cantidad }}</td>
-                        <td>{{ certificado.inspeccion.lote }}</td>
-                        <td>{{ certificado.fecha_aprobacion|date:"d/m/Y H:i" }}</td>
+                        <td><strong>#{{ pedido.id }}</strong></td>
+                        <td>{{ pedido.cliente.nombre }}</td>
+                        <td>{{ pedido.producto.nombre|default:"-" }}</td>
+                        <td>{{ pedido.cantidad }}</td>
+                        <td>{{ pedido.fecha_pedido|date:"d/m/Y" }}</td>
+                        <td>
+                            {% with primer_lote=pedido.lotes.first %}
+                            {% if primer_lote %}
+                            <span class="badge bg-info text-dark">{{ primer_lote.codigo_lote }}</span>
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td>
+                            {% if pedido.estado == 'pendiente' %}
+                            <span class="badge bg-warning text-dark">{{ pedido.get_estado_display }}</span>
+                            {% elif pedido.estado == 'aceptado' %}
+                            <span class="badge bg-success">{{ pedido.get_estado_display }}</span>
+                            {% elif pedido.estado == 'rechazado' %}
+                            <span class="badge bg-danger">{{ pedido.get_estado_display }}</span>
+                            {% elif pedido.estado == 'despachado' %}
+                            <span class="badge bg-primary">{{ pedido.get_estado_display }}</span>
+                            {% endif %}
+                        </td>
                         <td class="text-end">
-                            <div class="d-inline-flex gap-2">
-                                {% if certificado.pdf_url %}
-                                <a href="{{ MEDIA_URL }}{{ certificado.pdf_url }}" target="_blank" class="btn-brand-outline">
-                                    <i class="bi bi-file-pdf"></i> PDF
-                                </a>
-                                {% endif %}
-                                <a href="{% url 'registrar_despacho' certificado.id %}" class="btn-brand">
-                                    <i class="bi bi-truck"></i> Registrar Despacho
-                                </a>
-                            </div>
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#asignarLoteModal{{ pedido.id }}">
+                                Asignar Lote
+                            </button>
                         </td>
                     </tr>
                     {% empty %}
                     <tr>
-                        <td colspan="7" class="text-center text-muted py-4">
+                        <td colspan="8" class="text-center text-muted py-4">
                             <i class="bi bi-inbox" style="font-size: 1.8rem; opacity: 0.5;"></i><br>
-                            No hay certificados aprobados pendientes de despacho.
+                            No hay pedidos.
                         </td>
                     </tr>
                     {% endfor %}
@@ -56,4 +85,41 @@
         </div>
     </div>
 </div>
+
+{% for pedido in pedidos %}
+<div class="modal fade" id="asignarLoteModal{{ pedido.id }}" tabindex="-1" aria-labelledby="asignarLoteModalLabel{{ pedido.id }}" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="asignarLoteModalLabel{{ pedido.id }}">Asignar Lote al Pedido #{{ pedido.id }}</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form method="post" action="{% url 'asignar_lote' pedido.id %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="lote_select_{{ pedido.id }}" class="form-label">Seleccionar Lote</label>
+                        <select name="lote_id" id="lote_select_{{ pedido.id }}" class="form-select" required>
+                            <option value="">Seleccione un lote...</option>
+                            {% for lote in pedido.lotes.all %}
+                            <option value="{{ lote.id }}" selected>{{ lote.codigo_lote }}</option>
+                            {% endfor %}
+                            {% for lote in all_lotes %}
+                            {% if not lote.pedido %}
+                            <option value="{{ lote.id }}">{{ lote.codigo_lote }}</option>
+                            {% endif %}
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn-brand">Asignar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 {% endblock %}

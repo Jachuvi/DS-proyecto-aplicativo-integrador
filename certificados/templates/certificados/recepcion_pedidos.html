@@ -25,7 +25,7 @@
                     <tr>
                         <td><strong>#{{ pedido.id }}</strong></td>
                         <td>{{ pedido.cliente }}</td>
-                        <td>{{ pedido.producto }}</td>
+                        <td>{{ pedido.producto.nombre }}</td>
                         <td>{{ pedido.cantidad }}</td>
                         <td>{{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</td>
                         <td class="text-end">

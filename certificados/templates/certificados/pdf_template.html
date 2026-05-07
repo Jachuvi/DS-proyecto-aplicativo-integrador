@@ -43,7 +43,7 @@
         <h3>Datos del Pedido y Lote</h3>
         <table class="meta-grid">
             <tr><td class="label">Pedido (orden compra)</td><td>#{{ pedido.id }}</td></tr>
-            <tr><td class="label">Producto</td><td>{{ pedido.producto }}</td></tr>
+            <tr><td class="label">Producto</td><td>{{ pedido.producto.nombre }}</td></tr>
             <tr><td class="label">Cantidad solicitada</td><td>{{ pedido.cantidad }}</td></tr>
             {% if certificado.cantidad_total_entrega %}
             <tr><td class="label">Cantidad total entregada</td><td>{{ certificado.cantidad_total_entrega }}</td></tr>

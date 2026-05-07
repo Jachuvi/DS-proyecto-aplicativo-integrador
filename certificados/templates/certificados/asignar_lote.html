@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+{% block title %}Asignar Lote{% endblock %}
+{% block page_title %}Asignar Lote{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-3">Pedido #{{ pedido.id }}</h2>
+        <div class="row">
+            <div class="col-md-6"><strong>Cliente:</strong> {{ pedido.cliente.nombre }}</div>
+            <div class="col-md-6"><strong>Producto:</strong> {{ pedido.producto.nombre|default:"-" }}</div>
+            <div class="col-md-6 mt-2"><strong>Cantidad:</strong> {{ pedido.cantidad }}</div>
+            <div class="col-md-6 mt-2"><strong>Estado:</strong> {{ pedido.get_estado_display }}</div>
+        </div>
+    </div>
+</div>
+
+{% if lotes_asignados %}
+<div class="card mb-3">
+    <div class="card-body p-4">
+        <h5 class="card-title mb-3">Lotes Asignados</h5>
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Lote</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Caducidad</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in lotes_asignados %}
+                    <tr>
+                        <td><strong>{{ lote.codigo_lote }}</strong></td>
+                        <td>{{ lote.producto.nombre|default:"-" }}</td>
+                        <td>{{ lote.cantidad|default:"-" }}</td>
+                        <td>{{ lote.fecha_caducidad|date:"d/m/Y"|default:"-" }}</td>
+                        <td>
+                            <form method="post" action="{% url 'desasignar_lote' lote.id %}" style="display:inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="pedido_id" value="{{ pedido.id }}">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Desasignar</button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="card mb-3">
+    <div class="card-body p-4">
+        <h5 class="card-title mb-3">Asignar Nuevo Lote</h5>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="lote_id" class="form-label">Seleccionar Lote</label>
+                <select name="lote_id" id="lote_id" class="form-select" required>
+                    <option value="">Seleccione un lote...</option>
+                    {% for lote in lotes_disponibles %}
+                    <option value="{{ lote.id }}">{{ lote.codigo_lote }} - {{ lote.producto.nombre|default:"Sin producto" }} ({{ lote.cantidad|default:"-" }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn-brand">Asignar Lote</button>
+                <a href="{% url 'pendientes_despacho' %}" class="btn-brand-outline">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

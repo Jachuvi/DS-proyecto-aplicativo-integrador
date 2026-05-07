@@ -50,7 +50,7 @@
                 <div class="section-title">Información del Lote</div>
                 <table>
                     <tr><th>Número de Lote</th><td>{{ certificado.inspeccion.lote.folio }}</td></tr>
-                    <tr><th>Producto</th><td>{{ certificado.inspeccion.lote.producto }}</td></tr>
+                    <tr><th>Producto</th><td>{{ certificado.inspeccion.lote.producto.nombre|default:"-" }}</td></tr>
                     <tr><th>Cantidad</th><td>{{ certificado.inspeccion.lote.cantidad }}</td></tr>
                     <tr><th>Fecha de Producción</th><td>{{ certificado.inspeccion.lote.fecha|date:"d/m/Y" }}</td></tr>
                     <tr><th>Fecha de Caducidad</th><td>{{ certificado.fecha_caducidad|date:"d/m/Y"|default:"—" }}</td></tr>

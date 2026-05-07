@@ -43,7 +43,7 @@
                     <i class="bi bi-receipt"></i> Pedido #{{ pedido.id }}
                 </h3>
                 <dl class="info-grid mb-0">
-                    <dt>Producto</dt><dd>{{ pedido.producto }}</dd>
+                    <dt>Producto</dt><dd>{{ pedido.producto.nombre }}</dd>
                     <dt>Cantidad</dt><dd>{{ pedido.cantidad }}</dd>
                     <dt>Fecha</dt><dd>{{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</dd>
                     <dt>Estado</dt><dd>{{ pedido.get_estado_display }}</dd>

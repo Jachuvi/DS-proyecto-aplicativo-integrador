@@ -37,7 +37,7 @@
                 <tbody>
                     {% for lote in lotes %}
                     <tr>
-                        <td><strong>{{ lote.codigo_lote }}-{{ lote.secuencia }}</strong></td>
+                        <td><strong>{{ lote.codigo_lote }}</strong></td>
                         <td>{{ lote.producto.nombre|default:"—" }}</td>
                         <td>{{ lote.cantidad|default:"—" }}</td>
                         <td>{{ lote.pedido.id|default:"—" }}</td>
