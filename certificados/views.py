@@ -330,49 +330,15 @@ class AprobarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
         return redirect("consulta_certificados")
 
     def _enviar_al_cliente(self, certificado):
-        if not certificado.pdf_url:
-            return
-        correo_cliente = certificado.pedido.cliente.correo_contacto
-        absolute_path = os.path.join(settings.MEDIA_ROOT, certificado.pdf_url)
-        tracking_url = self.request.build_absolute_uri(
-            reverse("certificado_leido", kwargs={"pk": certificado.pk})
-        )
-        try:
-            email = EmailMessage(
-                subject=f"Certificado de Calidad - Pedido {certificado.pedido.id}",
-                body=(
-                    f"Estimado cliente,\n\n"
-                    f"Adjunto encontrará el certificado de calidad correspondiente "
-                    f"a su pedido #{certificado.pedido.id}.\n\n"
-                    f"Válido hasta: {certificado.fecha_caducidad}.\n"
-                ),
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                to=[correo_cliente],
-            )
-            # Versión HTML con pixel de seguimiento (acuse de lectura)
-            html_body = (
-                f"<p>Estimado cliente,</p>"
-                f"<p>Adjunto encontrará el certificado de calidad correspondiente "
-                f"a su pedido <strong>#{certificado.pedido.id}</strong>.</p>"
-                f"<p>Válido hasta: <strong>{certificado.fecha_caducidad}</strong>.</p>"
-                f'<img src="{tracking_url}" width="1" height="1" alt="" '
-                f'style="display:none">'
-            )
-            email.content_subtype = "html"
-            email.body = html_body
-            with open(absolute_path, "rb") as f:
-                email.attach(
-                    os.path.basename(absolute_path), f.read(), "application/pdf"
-                )
-            email.send()
+        from certificados.emails import send_certificate_email
+        success, msg = send_certificate_email(certificado)
+        if success:
             certificado.enviado = True
             certificado.save(update_fields=["enviado"])
-        except Exception as e:
-            print(f"Error enviando correo al cliente: {e}")
 
     def _notificar_almacen(self, certificado):
         destinatarios = list(
-            Usuario.objects.filter(rol="almacen", is_active=True).values_list(
+            Usuario.objects.filter(rol="operaciones", is_active=True).values_list(
                 "correo", flat=True
             )
         )
@@ -1368,9 +1334,16 @@ class CrearCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
             pedido=lote.pedido,
             numero_factura=numero_factura or None,
             cantidad_total_entrega=lote.cantidad,
+            fecha_caducidad=lote.fecha_caducidad,
         )
         
-        messages.success(request, f"Certificado {certificado.folio} creado.")
+        from certificados.emails import send_certificate_email
+        success, msg = send_certificate_email(certificado)
+        if success:
+            messages.success(request, f"Certificado {certificado.folio} creado y enviado al cliente.")
+        else:
+            messages.warning(request, f"Certificado {certificado.folio} creado. ({msg})")
+        
         return redirect("ver_certificado", pk=certificado.pk)
 
 
