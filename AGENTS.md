@@ -13,7 +13,7 @@ python manage.py runserver
 python manage.py makemigrations
 python manage.py migrate
 
-# Create initial data (users, parameters, sample data)
+# Create initial data (users, parameters, sample data, certificado)
 python setup_data.py
 ```
 
@@ -38,25 +38,26 @@ python setup_data.py
 ## Key Dependencies
 - django-filter (filtering)
 - xhtml2pdf (PDF certificate generation)
+- Select2 (searchable selects)
 
 ## URL Structure
 - Root `/` → HomeView
-- `/pedidos/registro/` → Sales - Register new pedido
+- `/ventas/registro/` → Ventas - Register new Venta (auto-creates Pedido)
 - `/pedidos/pendientes/` → Almacén - List all pedidos with filters
 - `/laboratorio/inspecciones/` → Lab - Inspecciones pendientes
 - `/laboratorio/lote/<id>/iniciar/` → Lab - Start inspection
 - `/calidad/certificados/` → Calidad - List certificados
 - `/calidad/certificados/nuevo/` → Calidad - Create certificado
 - `/calidad/certificados/<id>/ver/` → Calidad - View certificado
-- `/calidad/certificados/<id>/imprimir/` → Calidad - Print certificado
 - `/calidad/certificados/<id>/descargar/` → Calidad - Download PDF
+- `/calidad/certificados/<id>/editar/` → Calidad - Edit certificado
 - `/almacen/lotes/` → Almacén - List/create lotes
 - `/admin-catalogo/` → Catalog management (clients, parameters, equipment, products)
 - `/admin/` → Django admin
 - `/accounts/` → Django auth (login/logout)
 
 ## Sidebar Navigation
-- **Ventas**: Registrar Pedido
+- **Ventas**: Registrar Venta
 - **Laboratorio**: Inspecciones Pendientes
 - **Calidad**: Certificados
 - **Almacén**: Lotes, Pedidos
@@ -64,13 +65,18 @@ python setup_data.py
 
 ## Model Overview
 
+### Venta (NEW)
+- Auto-generated orden (V-YYYYMMDD-XXXX format)
+- Automatically creates a linked Pedido on save
+- Estados: pendiente, aceptado, rechazado, despachado
+
 ### Cliente
 - Has separate `direccion_fiscal` and `direccion_entrega` fields
 - `direccion_entrega_misma` flag to use fiscal address for delivery
 - Supports custom parameter reference values via ParametroCliente
 
 ### Producto
-- Catalogo de productos (codigo, nombre, descripcion)
+- Catálogo de productos (codigo, nombre, descripcion)
 
 ### Parametro
 - Global parameters (Humedad, Cenizas, Gluten, Falling Number, etc.)
@@ -79,17 +85,16 @@ python setup_data.py
   - Farinógrafo: Absorción de agua, Tiempo de desarrollo, Estabilidad, Grado de decaimiento
 
 ### Pedido
-- ForeignKey to Cliente and Producto
+- ForeignKey to Venta (auto-linked)
 - Estados: pendiente, aceptado, rechazado, despachado
 
 ### Lote
 - Auto-generated code (L-XXXXX)
-- Secuencia (A-Z)
-- Associated to Pedido (optional)
+- Associated to Pedido
 - producto, cantidad, fecha_produccion, fecha_caducidad
 
 ### Inspeccion
-- Associated to Lote and Equipo
+- Associated to Lote (equipo is optional)
 - Auto-generated clave (A-XXXXX, B-XXXXX, etc.)
 - Multiple Resultado entries
 
@@ -102,3 +107,11 @@ python setup_data.py
 - Auto-generated folio (CERT-XXXXX)
 - Estados: borrador, aprobado, despachado, rechazado, superado
 - PDF generation support
+
+## Workflow
+
+1. **Ventas** creates a Venta → Auto-creates Pedido
+2. **Almacén** assigns Lote to Pedido
+3. **Laboratorio** performs inspection on Lote → Creates Inspeccion with Resultados
+4. **Calidad** creates Certificado from Inspeccion + Pedido
+5. **Calidad** approves and downloads PDF

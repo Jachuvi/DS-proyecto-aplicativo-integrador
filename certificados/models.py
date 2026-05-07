@@ -55,24 +55,30 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 class Cliente(models.Model):
     nombre = models.CharField(max_length=255)
     rfc = models.CharField(max_length=13, unique=True)
-    
+
     direccion_fiscal_calle = models.CharField(max_length=150, blank=True, null=True)
     direccion_fiscal_numero = models.CharField(max_length=50, blank=True, null=True)
     direccion_fiscal_interior = models.CharField(max_length=50, blank=True, null=True)
     direccion_fiscal_colonia = models.CharField(max_length=100, blank=True, null=True)
-    direccion_fiscal_codigo_postal = models.CharField(max_length=5, blank=True, null=True)
+    direccion_fiscal_codigo_postal = models.CharField(
+        max_length=5, blank=True, null=True
+    )
     direccion_fiscal_ciudad = models.CharField(max_length=100, blank=True, null=True)
     direccion_fiscal_estado = models.CharField(max_length=100, blank=True, null=True)
-    
+
     direccion_entrega_calle = models.CharField(max_length=150, blank=True, null=True)
     direccion_entrega_numero = models.CharField(max_length=50, blank=True, null=True)
     direccion_entrega_interior = models.CharField(max_length=50, blank=True, null=True)
     direccion_entrega_colonia = models.CharField(max_length=100, blank=True, null=True)
-    direccion_entrega_codigo_postal = models.CharField(max_length=5, blank=True, null=True)
+    direccion_entrega_codigo_postal = models.CharField(
+        max_length=5, blank=True, null=True
+    )
     direccion_entrega_ciudad = models.CharField(max_length=100, blank=True, null=True)
     direccion_entrega_estado = models.CharField(max_length=100, blank=True, null=True)
-    direccion_entrega_misma = models.BooleanField(default=True, help_text="Usar la misma dirección fiscal para entrega")
-    
+    direccion_entrega_misma = models.BooleanField(
+        default=True, help_text="Usar la misma dirección fiscal para entrega"
+    )
+
     contacto = models.CharField(max_length=100)
     correo_contacto = models.EmailField()
     requiere_certificado = models.BooleanField(default=True)
@@ -89,7 +95,7 @@ class Cliente(models.Model):
 
     def __str__(self):
         return self.nombre
-    
+
     def get_direccion_fiscal(self):
         parts = []
         if self.direccion_fiscal_calle:
@@ -105,7 +111,7 @@ class Cliente(models.Model):
         if self.direccion_fiscal_estado:
             parts.append(self.direccion_fiscal_estado)
         return ", ".join(parts) if parts else ""
-    
+
     def get_direccion_entrega(self):
         if self.direccion_entrega_misma:
             return self.get_direccion_fiscal()
@@ -236,20 +242,13 @@ class Pedido(models.Model):
     )
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     producto = models.ForeignKey(
-        Producto, 
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True
+        Producto, on_delete=models.CASCADE, blank=True, null=True
     )
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_pedido = models.DateTimeField(default=timezone.now)
     estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
     venta = models.ForeignKey(
-        "Venta",
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True,
-        related_name="pedidos"
+        "Venta", on_delete=models.CASCADE, blank=True, null=True, related_name="pedidos"
     )
 
     class Meta:
@@ -271,10 +270,7 @@ class Venta(models.Model):
     )
     cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
     producto = models.ForeignKey(
-        Producto, 
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True
+        Producto, on_delete=models.CASCADE, blank=True, null=True
     )
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_venta = models.DateTimeField(default=timezone.now)
@@ -294,14 +290,14 @@ class Venta(models.Model):
                 new_num = 1
             self.orden = f"V-{timezone.now().strftime('%Y%m%d')}-{new_num:04d}"
         super().save(*args, **kwargs)
-        
+
         if not Pedido.objects.filter(venta=self).exists():
             Pedido.objects.create(
                 cliente=self.cliente,
                 producto=self.producto,
                 cantidad=self.cantidad,
                 estado=self.estado,
-                venta=self
+                venta=self,
             )
 
     def __str__(self):
@@ -310,45 +306,31 @@ class Venta(models.Model):
 
 class Lote(models.Model):
     pedido = models.ForeignKey(
-        Pedido, 
-        on_delete=models.CASCADE, 
-        blank=True, 
-        null=True,
-        related_name="lotes"
+        Pedido, on_delete=models.CASCADE, blank=True, null=True, related_name="lotes"
     )
     codigo_lote = models.CharField(max_length=50, default="L-TEMP")
     secuencia = models.CharField(max_length=1, default="A")
     producto = models.ForeignKey(
-        Producto, 
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True
+        Producto, on_delete=models.CASCADE, blank=True, null=True
     )
     cantidad = models.DecimalField(
-        max_digits=10, 
-        decimal_places=2,
-        blank=True,
-        null=True
+        max_digits=10, decimal_places=2, blank=True, null=True
     )
-    fecha_produccion = models.DateField(
-        auto_now_add=True,
-        blank=True,
-        null=True
-    )
-    fecha_caducidad = models.DateField(
-        blank=True,
-        null=True
-    )
+    fecha_produccion = models.DateField(auto_now_add=True, blank=True, null=True)
+    fecha_caducidad = models.DateField(blank=True, null=True)
     activo = models.BooleanField(default=True)
-    
+
     def __str__(self):
         return self.codigo_lote
-    
+
     def save(self, *args, **kwargs):
         if not self.codigo_lote:
             import random
             import string
-            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+
+            suffix = "".join(
+                random.choices(string.ascii_uppercase + string.digits, k=5)
+            )
             self.codigo_lote = f"L-{suffix}"
         super().save(*args, **kwargs)
 
@@ -371,9 +353,14 @@ class Inspeccion(models.Model):
     def save(self, *args, **kwargs):
         if not self.clave:
             import string
+
             count = Inspeccion.objects.filter(lote=self.lote).count()
             letra = string.ascii_uppercase[count] if count < 26 else "Z"
-            lote_id_only = self.lote.codigo_lote.replace("L-", "") if self.lote.codigo_lote else str(self.lote.id)
+            lote_id_only = (
+                self.lote.codigo_lote.replace("L-", "")
+                if self.lote.codigo_lote
+                else str(self.lote.id)
+            )
             self.clave = f"{letra}-{lote_id_only}"
         super().save(*args, **kwargs)
 
@@ -440,7 +427,10 @@ class Certificado(models.Model):
         if not self.folio:
             import random
             import string
-            suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+
+            suffix = "".join(
+                random.choices(string.ascii_uppercase + string.digits, k=5)
+            )
             self.folio = f"CERT-{suffix}"
         super().save(*args, **kwargs)
 

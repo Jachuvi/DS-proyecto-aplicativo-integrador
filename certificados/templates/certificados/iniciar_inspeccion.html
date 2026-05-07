@@ -33,6 +33,7 @@
                 <div id="seccion_global">
                     <div class="row">
                         {% for p in parametros_global %}
+                        {% with override=parametro_overrides|dict:p.id %}
                         <div class="col-md-4 mb-3 param-item" data-seccion="global">
                             <div class="form-check mb-1">
                                 <input type="checkbox" class="form-check-input param-check" id="check_p_{{ p.id }}" name="include_param_{{ p.id }}" value="on" checked onchange="toggleParam('{{ p.id }}')">
@@ -42,8 +43,12 @@
                                 <input type="number" step="0.01" class="form-control" name="param_{{ p.id }}" id="input_p_{{ p.id }}" placeholder="0.00">
                                 <span class="input-group-text">{{ p.unidad }}</span>
                             </div>
-                            <small class="text-muted">Ref: {{ p.ref_min|floatformat }} – {{ p.ref_max|floatformat }} {{ p.unidad }}</small>
+                            <small class="text-muted">
+                                Ref: {{ override.ref_min|floatformat }} – {{ override.ref_max|floatformat }} {{ p.unidad }}
+                                {% if override.is_client %}<span class="badge bg-info ms-1">Cliente</span>{% endif %}
+                            </small>
                         </div>
+                        {% endwith %}
                         {% endfor %}
                     </div>
                 </div>
@@ -58,6 +63,7 @@
                 <div id="seccion_alveografo">
                     <div class="row">
                         {% for p in parametros_alveograma %}
+                        {% with override=parametro_overrides|dict:p.id %}
                         <div class="col-md-4 mb-3 param-item" data-seccion="alveografo">
                             <div class="form-check mb-1">
                                 <input type="checkbox" class="form-check-input param-check" id="check_p_{{ p.id }}" name="include_param_{{ p.id }}" value="on" checked onchange="toggleParam('{{ p.id }}')">
@@ -67,8 +73,12 @@
                                 <input type="number" step="0.01" class="form-control" name="param_{{ p.id }}" id="input_p_{{ p.id }}" placeholder="0.00">
                                 <span class="input-group-text">{{ p.unidad }}</span>
                             </div>
-                            <small class="text-muted">Ref: {{ p.ref_min|floatformat }} – {{ p.ref_max|floatformat }} {{ p.unidad }}</small>
+                            <small class="text-muted">
+                                Ref: {{ override.ref_min|floatformat }} – {{ override.ref_max|floatformat }} {{ p.unidad }}
+                                {% if override.is_client %}<span class="badge bg-info ms-1">Cliente</span>{% endif %}
+                            </small>
                         </div>
+                        {% endwith %}
                         {% endfor %}
                     </div>
                 </div>
@@ -83,6 +93,7 @@
                 <div id="seccion_farinografo">
                     <div class="row">
                         {% for p in parametros_farinograma %}
+                        {% with override=parametro_overrides|dict:p.id %}
                         <div class="col-md-4 mb-3 param-item" data-seccion="farinografo">
                             <div class="form-check mb-1">
                                 <input type="checkbox" class="form-check-input param-check" id="check_p_{{ p.id }}" name="include_param_{{ p.id }}" value="on" checked onchange="toggleParam('{{ p.id }}')">
@@ -92,8 +103,12 @@
                                 <input type="number" step="0.01" class="form-control" name="param_{{ p.id }}" id="input_p_{{ p.id }}" placeholder="0.00">
                                 <span class="input-group-text">{{ p.unidad }}</span>
                             </div>
-                            <small class="text-muted">Ref: {{ p.ref_min|floatformat }} – {{ p.ref_max|floatformat }} {{ p.unidad }}</small>
+                            <small class="text-muted">
+                                Ref: {{ override.ref_min|floatformat }} – {{ override.ref_max|floatformat }} {{ p.unidad }}
+                                {% if override.is_client %}<span class="badge bg-info ms-1">Cliente</span>{% endif %}
+                            </small>
                         </div>
+                        {% endwith %}
                         {% endfor %}
                     </div>
                 </div>

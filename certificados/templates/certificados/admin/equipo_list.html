@@ -42,7 +42,13 @@
                             {% if equipo.activo %}
                             <span class="badge bg-success">Activo</span>
                             {% else %}
-                            <span class="badge bg-secondary" title="{{ equipo.causa_baja }}">Baja</span>
+                            <button type="button" class="badge bg-secondary text-decoration-none border-0"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#verCausaModal"
+                                    data-causa="{{ equipo.causa_baja|escapejs }}"
+                                    data-clave="{{ equipo.clave }}">
+                                Baja
+                            </button>
                             {% endif %}
                         </td>
                         <td class="text-end">
@@ -50,14 +56,14 @@
                                 <a href="{% url 'equipo_update' equipo.id %}" class="btn-brand-outline">
                                     <i class="bi bi-pencil"></i> Editar
                                 </a>
-                                <form method="post" action="{% url 'equipo_baja' equipo.id %}" class="d-inline"
-                                      onsubmit="return promptCausa(this, {{ equipo.activo|yesno:'true,false' }});">
-                                    {% csrf_token %}
-                                    <input type="hidden" name="causa_baja" value="">
-                                    <button type="submit" class="btn-brand-outline">
-                                        {% if equipo.activo %}<i class="bi bi-x-circle"></i> Baja{% else %}<i class="bi bi-arrow-counterclockwise"></i> Reactivar{% endif %}
-                                    </button>
-                                </form>
+                                <button type="button" class="btn-brand-outline"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#bajaModal"
+                                        data-url="{% url 'equipo_baja' equipo.id %}"
+                                        data-activo="{{ equipo.activo|yesno:"true,false" }}"
+                                        data-clave="{{ equipo.clave }}">
+                                    {% if equipo.activo %}<i class="bi bi-x-circle"></i> Baja{% else %}<i class="bi bi-arrow-counterclockwise"></i> Reactivar{% endif %}
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -75,15 +81,110 @@
     </div>
 </div>
 
+<div class="modal fade" id="bajaModal" tabindex="-1" aria-labelledby="bajaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="bajaModalLabel">Dar de Baja Equipo</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p id="modalEquipoClave"></p>
+                <label for="causaBajaInput" class="form-label">Causa de la baja:</label>
+                <textarea class="form-control" id="causaBajaInput" rows="3" placeholder="Ingrese la causa de la baja del equipo"></textarea>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn-brand" id="confirmBajaBtn">Confirmar Baja</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="verCausaModal" tabindex="-1" aria-labelledby="verCausaModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="verCausaModalLabel">Causa de Baja</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Equipo:</strong> <span id="causaEquipoClave"></span></p>
+                <p><strong>Causa:</strong></p>
+                <p id="causaTexto" class="bg-light p-3 rounded"></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
-function promptCausa(form, esActivo) {
-    if (!esActivo) {
-        return confirm('¿Reactivar este equipo?');
+const bajaModal = document.getElementById('bajaModal');
+let currentForm = null;
+
+bajaModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const url = button.getAttribute('data-url');
+    const activo = button.getAttribute('data-activo') === 'true';
+    const clave = button.getAttribute('data-clave');
+
+    const title = bajaModal.querySelector('.modal-title');
+    const causaInput = document.getElementById('causaBajaInput');
+    const confirmBtn = document.getElementById('confirmBajaBtn');
+    const modalClave = document.getElementById('modalEquipoClave');
+
+    if (activo) {
+        title.textContent = 'Dar de Baja Equipo';
+        modalClave.textContent = 'Equipo: ' + clave;
+        causaInput.parentElement.style.display = 'block';
+        confirmBtn.textContent = 'Confirmar Baja';
+    } else {
+        title.textContent = 'Reactivar Equipo';
+        modalClave.textContent = '¿Está seguro que desea reactivar el equipo ' + clave + '?';
+        causaInput.parentElement.style.display = 'none';
+        confirmBtn.textContent = 'Confirmar Reactivación';
     }
-    var causa = prompt('Causa de la baja del equipo:');
-    if (causa === null) return false;
-    form.querySelector('input[name="causa_baja"]').value = causa;
-    return true;
-}
+
+    causaInput.value = '';
+
+    currentForm = document.createElement('form');
+    currentForm.method = 'post';
+    currentForm.action = url;
+    currentForm.innerHTML = '{% csrf_token %}<input type="hidden" name="causa_baja" value="">';
+});
+
+const verCausaModal = document.getElementById('verCausaModal');
+verCausaModal.addEventListener('show.bs.modal', function (event) {
+    const button = event.relatedTarget;
+    const causa = button.getAttribute('data-causa');
+    const clave = button.getAttribute('data-clave');
+
+    document.getElementById('causaEquipoClave').textContent = clave;
+    document.getElementById('causaTexto').textContent = causa || 'No especificada';
+});
+
+document.getElementById('confirmBajaBtn').addEventListener('click', function() {
+    const activo = bajaModal.querySelector('.btn-close').closest('.modal').querySelector('button[data-activo]')?.getAttribute('data-activo') === 'true';
+    const causaInput = document.getElementById('causaBajaInput');
+
+    if (activo) {
+        const causa = causaInput.value.trim();
+        if (!causa) {
+            causaInput.classList.add('is-invalid');
+            return;
+        }
+        causaInput.classList.remove('is-invalid');
+        currentForm.querySelector('input[name="causa_baja"]').value = causa;
+    }
+
+    document.body.appendChild(currentForm);
+    currentForm.submit();
+});
+
+bajaModal.addEventListener('hidden.bs.modal', function() {
+    currentForm = null;
+});
 </script>
 {% endblock %}

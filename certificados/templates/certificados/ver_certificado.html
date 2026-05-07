@@ -45,19 +45,24 @@
             </thead>
             <tbody>
                 {% for res in certificado.inspeccion.resultados.all %}
+                {% with data=parametro_data|dict:res.parametro_id %}
                 <tr>
                     <td>{{ res.parametro.nombre }}</td>
                     <td><strong>{{ res.valor_obtenido }}</strong> {{ res.parametro.unidad }}</td>
-                    <td>{{ res.parametro.ref_min }} - {{ res.parametro.ref_max }}</td>
+                    <td>
+                        {{ data.ref_min }} - {{ data.ref_max }}
+                        {% if data.is_client %}<span class="badge bg-info ms-1">Cliente</span>{% endif %}
+                    </td>
                     <td>{{ res.desvio_vs_ref }}</td>
                     <td>
-                        {% if res.valor_obtenido >= res.parametro.ref_min and res.valor_obtenido <= res.parametro.ref_max %}
+                        {% if res.valor_obtenido >= data.ref_min and res.valor_obtenido <= data.ref_max %}
                         <span class="badge bg-success">Sí</span>
                         {% else %}
                         <span class="badge bg-danger">No</span>
                         {% endif %}
                     </td>
                 </tr>
+                {% endwith %}
                 {% endfor %}
             </tbody>
         </table>

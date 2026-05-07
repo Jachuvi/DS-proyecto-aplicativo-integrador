@@ -11,28 +11,59 @@
         <div class="alert alert-danger">{{ error }}</div>
         {% endif %}
         
-        <form method="post">
+        <form method="post" id="certificadoForm">
             {% csrf_token %}
             <div class="row g-3">
                 <div class="col-md-6">
                     <label class="form-label">Lote</label>
-                    <select name="lote" id="loteSelect" class="form-select" required>
+                    <select name="lote" id="loteSelect" class="form-select select2" data-placeholder="Seleccione un lote..." required>
                         <option value="">Seleccione un lote...</option>
                         {% for lote in lotes %}
-                        <option value="{{ lote.id }}">{{ lote.codigo_lote }}-{{ lote.secuencia }} - {{ lote.producto.nombre|default:"Sin producto" }}</option>
+                        <option value="{{ lote.id }}">{{ lote.codigo_lote }} - {{ lote.producto.nombre|default:"Sin producto" }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label">Inspección</label>
                     <select name="inspeccion" id="inspeccionSelect" class="form-select" required disabled>
-                        <option value="">Seleccione una inspección...</option>
+                        <option value="">Seleccione un lote primero...</option>
                     </select>
+                </div>
+            </div>
+
+            <div id="previewSection" class="mt-4" style="display: none;">
+                <h5 class="mb-3">Vista Previa</h5>
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-2">Datos del Lote</h6>
+                                <p class="mb-1"><strong>Lote:</strong> <span id="previewLote"></span></p>
+                                <p class="mb-1"><strong>Producto:</strong> <span id="previewProducto"></span></p>
+                                <p class="mb-1"><strong>Cantidad:</strong> <span id="previewCantidad"></span> kg</p>
+                                <p class="mb-1"><strong>Fecha Producción:</strong> <span id="previewFechaProd"></span></p>
+                                <p class="mb-0"><strong>Fecha Caducidad:</strong> <span id="previewFechaCad"></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <h6 class="text-muted mb-2">Datos del Cliente</h6>
+                                <p class="mb-1"><strong>Nombre:</strong> <span id="previewCliente"></span></p>
+                                <p class="mb-1"><strong>RFC:</strong> <span id="previewRFC"></span></p>
+                                <p class="mb-0"><strong>Dirección:</strong> <span id="previewDireccion"></span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="facturaSection" class="row g-3 mt-3" style="display: none;">
+                <div class="col-md-6">
+                    <label for="numero_factura" class="form-label">Número de Factura</label>
+                    <input type="text" name="numero_factura" id="numero_factura" class="form-control" placeholder="Ej: FC-A-00045892">
                 </div>
             </div>
             
             <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn-brand">Crear Certificado</button>
+                <button type="submit" class="btn-brand" id="submitBtn" disabled>Crear Certificado</button>
                 <a href="{% url 'certificados_list' %}" class="btn-brand-outline">Cancelar</a>
             </div>
         </form>
@@ -40,22 +71,39 @@
 </div>
 
 <script>
-    document.getElementById('loteSelect').addEventListener('change', function() {
-        var loteId = this.value;
-        var inspeccionSelect = document.getElementById('inspeccionSelect');
-        
-        inspeccionSelect.innerHTML = '<option value="">Cargando...</option>';
-        inspeccionSelect.disabled = true;
-        
-        if (!loteId) {
+var loteData = {};
+
+document.getElementById('loteSelect').addEventListener('change', function() {
+    var loteId = this.value;
+    var inspeccionSelect = document.getElementById('inspeccionSelect');
+    var previewSection = document.getElementById('previewSection');
+    var facturaSection = document.getElementById('facturaSection');
+    var submitBtn = document.getElementById('submitBtn');
+    
+    inspeccionSelect.innerHTML = '<option value="">Cargando...</option>';
+    inspeccionSelect.disabled = true;
+    previewSection.style.display = 'none';
+    facturaSection.style.display = 'none';
+    submitBtn.disabled = true;
+    
+    if (!loteId) {
+        inspeccionSelect.innerHTML = '<option value="">Seleccione un lote primero...</option>';
+        return;
+    }
+    
+    var csrfToken = '{{ csrf_token }}';
+    
+    fetch('/calidad/certificados/api/inspecciones/?lote_id=' + loteId)
+        .then(function(response) {
+            if (!response.ok) throw new Error('Error en la petición');
+            return response.json();
+        })
+        .then(function(data) {
+            console.log('Inspecciones:', data);
             inspeccionSelect.innerHTML = '<option value="">Seleccione una inspección...</option>';
-            return;
-        }
-        
-        fetch('/calidad/certificados/api/inspecciones/?lote_id=' + loteId)
-            .then(function(response) { return response.json(); })
-            .then(function(data) {
-                inspeccionSelect.innerHTML = '<option value="">Seleccione una inspección...</option>';
+            if (data.length === 0) {
+                inspeccionSelect.innerHTML = '<option value="">No hay inspecciones para este lote</option>';
+            } else {
                 data.forEach(function(insp) {
                     var option = document.createElement('option');
                     option.value = insp.id;
@@ -63,7 +111,58 @@
                     inspeccionSelect.appendChild(option);
                 });
                 inspeccionSelect.disabled = false;
-            });
-    });
+            }
+        })
+        .catch(function(error) {
+            console.error('Error:', error);
+            inspeccionSelect.innerHTML = '<option value="">Error al cargar inspecciones</option>';
+        });
+    
+    if (loteData[loteId]) {
+        var data = loteData[loteId];
+        document.getElementById('previewLote').textContent = data.codigo_lote;
+        document.getElementById('previewProducto').textContent = data.producto || '—';
+        document.getElementById('previewCantidad').textContent = data.cantidad || '—';
+        document.getElementById('previewFechaProd').textContent = data.fecha_prod || '—';
+        document.getElementById('previewFechaCad').textContent = data.fecha_cad || '—';
+        document.getElementById('previewCliente').textContent = data.cliente || '—';
+        document.getElementById('previewRFC').textContent = data.rfc || '—';
+        document.getElementById('previewDireccion').textContent = data.direccion || '—';
+        previewSection.style.display = 'block';
+    }
+});
+
+document.getElementById('inspeccionSelect').addEventListener('change', function() {
+    var inspeccionId = this.value;
+    var facturaSection = document.getElementById('facturaSection');
+    var submitBtn = document.getElementById('submitBtn');
+    
+    if (inspeccionId) {
+        facturaSection.style.display = 'flex';
+        submitBtn.disabled = false;
+    } else {
+        facturaSection.style.display = 'none';
+        submitBtn.disabled = true;
+    }
+});
+
+{% for lote in lotes %}
+loteData[{{ lote.id }}] = {
+    codigo_lote: '{{ lote.codigo_lote }}',
+    producto: '{{ lote.producto.nombre|default:"" }}',
+    cantidad: '{{ lote.cantidad|default:"" }}',
+    fecha_prod: '{% if lote.fecha_produccion %}{{ lote.fecha_produccion|date:"d/m/Y" }}{% endif %}',
+    fecha_cad: '{% if lote.fecha_caducidad %}{{ lote.fecha_caducidad|date:"d/m/Y" }}{% endif %}',
+    {% if lote.pedido and lote.pedido.cliente %}
+    cliente: '{{ lote.pedido.cliente.nombre|escapejs }}',
+    rfc: '{{ lote.pedido.cliente.rfc|escapejs }}',
+    direccion: '{% if lote.pedido.cliente.direccion_fiscal_calle %}{{ lote.pedido.cliente.direccion_fiscal_calle }} {{ lote.pedido.cliente.direccion_fiscal_numero }}, {{ lote.pedido.cliente.direccion_fiscal_colonia }}, {{ lote.pedido.cliente.direccion_fiscal_codigo_postal }} {{ lote.pedido.cliente.direccion_fiscal_ciudad }}, {{ lote.pedido.cliente.direccion_fiscal_estado }}{% else %}—{% endif %}'
+    {% else %}
+    cliente: '—',
+    rfc: '—',
+    direccion: '—'
+    {% endif %}
+};
+{% endfor %}
 </script>
 {% endblock %}

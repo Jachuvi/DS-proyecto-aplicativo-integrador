@@ -1170,12 +1170,32 @@ class IniciarInspeccionFromLoteView(LoginRequiredMixin, RoleRequiredMixin, View)
     def get(self, request, lote_id):
         lote = get_object_or_404(Lote, id=lote_id)
         parametros = Parametro.objects.filter(activo=True)
-        
+
         count = Inspeccion.objects.filter(lote=lote).count()
         letra = string.ascii_uppercase[count] if count < 26 else "Z"
         lote_id_short = lote.codigo_lote.replace("L-", "") if lote.codigo_lote else str(lote.id)
         inspeccion_clave = f"{letra}-{lote_id_short}"
-        
+
+        parametro_overrides = {}
+        if lote.pedido and lote.pedido.cliente:
+            parametro_overrides = {
+                pc.parametro_id: {
+                    'ref_min': pc.ref_min,
+                    'ref_max': pc.ref_max,
+                    'is_client': True
+                }
+                for pc in ParametroCliente.objects.filter(
+                    cliente=lote.pedido.cliente, activo=True
+                )
+            }
+            for p in parametros:
+                if p.id not in parametro_overrides:
+                    parametro_overrides[p.id] = {
+                        'ref_min': p.ref_min,
+                        'ref_max': p.ref_max,
+                        'is_client': False
+                    }
+
         return render(request, "certificados/iniciar_inspeccion.html", {
             "lote": lote,
             "parametros": parametros,
@@ -1183,6 +1203,7 @@ class IniciarInspeccionFromLoteView(LoginRequiredMixin, RoleRequiredMixin, View)
             "parametros_alveograma": parametros.filter(equipo__tipo='alveografo'),
             "parametros_farinograma": parametros.filter(equipo__tipo='farinografo'),
             "inspeccion_clave": inspeccion_clave,
+            "parametro_overrides": parametro_overrides,
         })
 
     def post(self, request, lote_id):
@@ -1244,6 +1265,7 @@ class CrearCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
     def post(self, request):
         lote_id = request.POST.get("lote")
         inspeccion_id = request.POST.get("inspeccion")
+        numero_factura = request.POST.get("numero_factura")
         
         if not lote_id or not inspeccion_id:
             return render(request, "certificados/crear_certificado.html", {
@@ -1257,9 +1279,12 @@ class CrearCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
         certificado = Certificado.objects.create(
             inspeccion=inspeccion,
             pedido=lote.pedido,
+            numero_factura=numero_factura or None,
+            cantidad_total_entrega=lote.cantidad,
         )
         
-        return redirect("editar_certificado", pk=certificado.pk)
+        messages.success(request, f"Certificado {certificado.folio} creado.")
+        return redirect("ver_certificado", pk=certificado.pk)
 
 
 class VerCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
@@ -1275,8 +1300,27 @@ class VerCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
             ),
             pk=pk
         )
+
+        parametro_data = {}
+        if certificado.inspeccion.lote.pedido and certificado.inspeccion.lote.pedido.cliente:
+            cliente = certificado.inspeccion.lote.pedido.cliente
+            for pc in ParametroCliente.objects.filter(cliente=cliente, activo=True):
+                parametro_data[pc.parametro_id] = {
+                    'ref_min': pc.ref_min,
+                    'ref_max': pc.ref_max,
+                    'is_client': True
+                }
+            for res in certificado.inspeccion.resultados.all():
+                if res.parametro_id not in parametro_data:
+                    parametro_data[res.parametro_id] = {
+                        'ref_min': res.parametro.ref_min,
+                        'ref_max': res.parametro.ref_max,
+                        'is_client': False
+                    }
+
         return render(request, "certificados/ver_certificado.html", {
             "certificado": certificado,
+            "parametro_data": parametro_data,
         })
 
 
@@ -1293,8 +1337,27 @@ class ImprimirCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
             ),
             pk=pk
         )
+
+        parametro_data = {}
+        if certificado.inspeccion.lote.pedido and certificado.inspeccion.lote.pedido.cliente:
+            cliente = certificado.inspeccion.lote.pedido.cliente
+            for pc in ParametroCliente.objects.filter(cliente=cliente, activo=True):
+                parametro_data[pc.parametro_id] = {
+                    'ref_min': pc.ref_min,
+                    'ref_max': pc.ref_max,
+                    'is_client': True
+                }
+            for res in certificado.inspeccion.resultados.all():
+                if res.parametro_id not in parametro_data:
+                    parametro_data[res.parametro_id] = {
+                        'ref_min': res.parametro.ref_min,
+                        'ref_max': res.parametro.ref_max,
+                        'is_client': False
+                    }
+
         return render(request, "certificados/imprimir_certificado.html", {
             "certificado": certificado,
+            "parametro_data": parametro_data,
         })
 
 

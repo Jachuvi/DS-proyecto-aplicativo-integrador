@@ -115,16 +115,21 @@
                 </thead>
                 <tbody class="table-group-divider">
                     {% for res in certificado.inspeccion.resultados.all %}
+                    {% with data=parametro_data|dict:res.parametro_id %}
                     <tr>
                         <td class="text-start fw-bold">{{ res.parametro.nombre }}</td>
                         <td>{% if res.parametro.equipo %}{{ res.parametro.equipo.get_tipo_display }}{% else %}—{% endif %}</td>
                         <td>{{ res.valor_obtenido }}</td>
-                        <td>{{ res.parametro.ref_min|floatformat }} - {{ res.parametro.ref_max|floatformat }}</td>
+                        <td>
+                            {{ data.ref_min|floatformat }} - {{ data.ref_max|floatformat }}
+                            {% if data.is_client %}<span class="badge bg-info ms-1">Cliente</span>{% endif %}
+                        </td>
                         <td class="{% if res.desvio_vs_ref > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
                             {% if res.desvio_vs_ref > 0 %}+{% endif %}{{ res.desvio_vs_ref|floatformat }}
                         </td>
                         <td>{{ res.parametro.unidad }}</td>
                     </tr>
+                    {% endwith %}
                     {% endfor %}
                 </tbody>
             </table>
