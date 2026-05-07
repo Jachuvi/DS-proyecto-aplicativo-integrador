@@ -93,7 +93,7 @@ class RegistroVentaView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     form_class = VentaForm
     template_name = "certificados/venta_form.html"
     success_url = reverse_lazy("home")
-    allowed_roles = ["ventas"]
+    allowed_roles = ["ventas", "admin"]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -111,7 +111,7 @@ class RegistroDePedidoView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     fields = ["cliente", "producto", "cantidad"]
     template_name = "certificados/pedido_form.html"
     success_url = reverse_lazy("iniciar_inspeccion_pendientes")
-    allowed_roles = ["ventas"]
+    allowed_roles = ["ventas", "admin"]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -130,7 +130,7 @@ class RecepcionPedidoView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     model = Pedido
     template_name = "certificados/recepcion_pedidos.html"
     context_object_name = "pedidos"
-    allowed_roles = ["lab"]
+    allowed_roles = ["lab", "control calidad", "admin"]
 
     def get_queryset(self):
         return Pedido.objects.filter(estado="pendiente")
@@ -153,7 +153,7 @@ class IniciarInspeccionView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     model = Lote
     fields = ["codigo_lote", "secuencia"]
     template_name = "certificados/iniciar_inspeccion.html"
-    allowed_roles = ["lab"]
+    allowed_roles = ["lab", "control calidad", "admin"]
 
     def get_initial(self):
         initial = super().get_initial()
@@ -233,7 +233,7 @@ class RegistroResultadosView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
     fields = []
     template_name = "certificados/registro_resultados.html"
     success_url = reverse_lazy("iniciar_inspeccion_pendientes")
-    allowed_roles = ["lab"]
+    allowed_roles = ["lab", "control calidad", "admin"]
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
@@ -278,7 +278,7 @@ class ConsultaCertificadosView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     model = Certificado
     template_name = "certificados/consulta_certificados.html"
     context_object_name = "certificados"
-    allowed_roles = ["admin", "calidad", "consulta"]
+    allowed_roles = ["admin", "control calidad"]
 
     def get_queryset(self):
         queryset = (
@@ -303,7 +303,7 @@ class AprobarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
     y notifica al almacén para preparar despacho.
     """
 
-    allowed_roles = ["calidad"]
+    allowed_roles = ["aseguramiento calidad", "control calidad", "admin"]
 
     def post(self, request, pk):
         certificado = get_object_or_404(Certificado, pk=pk)
@@ -432,7 +432,7 @@ class EditarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
     """
 
     template_name = "certificados/editar_certificado.html"
-    allowed_roles = ["calidad", "lab"]
+    allowed_roles = ["control calidad", "admin"]
 
     def _get_certificado(self, pk):
         return get_object_or_404(
@@ -540,7 +540,7 @@ class LoteListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     model = Lote
     template_name = "certificados/almacen_lotes.html"
     context_object_name = "lotes"
-    allowed_roles = ["almacen", "lab", "admin"]
+    allowed_roles = ["operaciones", "admin"]
 
     def get_queryset(self):
         return Lote.objects.select_related("pedido__cliente", "producto").order_by("-id")
@@ -551,7 +551,7 @@ class LoteCreateView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     fields = ["producto", "cantidad", "fecha_caducidad"]
     template_name = "certificados/almacen_crear_lote.html"
     success_url = reverse_lazy("lote_list")
-    allowed_roles = ["almacen", "admin"]
+    allowed_roles = ["operaciones", "admin"]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -584,7 +584,7 @@ class PendientesDespachoView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     model = Pedido
     template_name = "certificados/pendientes_despacho.html"
     context_object_name = "pedidos"
-    allowed_roles = ["almacen", "admin"]
+    allowed_roles = ["operaciones", "admin"]
 
     def get_queryset(self):
         queryset = Pedido.objects.select_related("cliente", "producto").order_by("-fecha_pedido")
@@ -605,7 +605,7 @@ class PendientesDespachoView(LoginRequiredMixin, RoleRequiredMixin, ListView):
 
 
 class AsignarLoteView(LoginRequiredMixin, RoleRequiredMixin, View):
-    allowed_roles = ["almacen", "admin"]
+    allowed_roles = ["operaciones", "admin"]
 
     def post(self, request, pk):
         pedido = get_object_or_404(Pedido, pk=pk)
@@ -634,7 +634,7 @@ class AsignarLoteView(LoginRequiredMixin, RoleRequiredMixin, View):
 
 
 class RegistrarDespachoView(LoginRequiredMixin, RoleRequiredMixin, View):
-    allowed_roles = ["almacen", "admin"]
+    allowed_roles = ["operaciones", "admin"]
 
     def post(self, request, pk):
         lote = get_object_or_404(Lote, pk=pk)
@@ -649,7 +649,7 @@ class RegistrarDespachoView(LoginRequiredMixin, RoleRequiredMixin, DetailView):
     model = Pedido
     template_name = "certificados/registrar_despacho.html"
     context_object_name = "pedido"
-    allowed_roles = ["almacen", "admin"]
+    allowed_roles = ["operaciones", "admin"]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -994,7 +994,7 @@ class ProductoBajaView(LoginRequiredMixin, AdminOnlyMixin, View):
 # ---------------------------------------------------------------------------
 class EstadisticasView(LoginRequiredMixin, RoleRequiredMixin, TemplateView):
     template_name = "certificados/estadisticas.html"
-    allowed_roles = ["calidad", "consulta"]
+    allowed_roles = ["aseguramiento calidad", "gerente planta", "director operaciones", "admin"]
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -1234,7 +1234,7 @@ class InspeccionesPendientesView(LoginRequiredMixin, RoleRequiredMixin, ListView
     model = Lote
     template_name = "certificados/inspecciones_pendientes.html"
     context_object_name = "lotes"
-    allowed_roles = ["lab"]
+    allowed_roles = ["lab", "control calidad", "admin"]
 
     def get_queryset(self):
         lotes = Lote.objects.select_related("pedido__cliente", "producto").filter(pedido__isnull=False).order_by("-id")
@@ -1252,7 +1252,7 @@ class InspeccionesPendientesView(LoginRequiredMixin, RoleRequiredMixin, ListView
 
 
 class IniciarInspeccionFromLoteView(LoginRequiredMixin, RoleRequiredMixin, View):
-    allowed_roles = ["lab"]
+    allowed_roles = ["lab", "control calidad", "admin"]
 
     def get(self, request, lote_id):
         lote = get_object_or_404(Lote, id=lote_id)
@@ -1329,7 +1329,7 @@ class CertificadosListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
     model = Certificado
     template_name = "certificados/certificados_list.html"
     context_object_name = "certificados"
-    allowed_roles = ["admin", "calidad", "consulta"]
+    allowed_roles = ["admin", "control calidad"]
 
     def get_queryset(self):
         return (
@@ -1341,7 +1341,7 @@ class CertificadosListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
 
 
 class CrearCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
-    allowed_roles = ["admin", "calidad"]
+    allowed_roles = ["admin", "control calidad"]
 
     def get(self, request):
         lotes = Lote.objects.filter(pedido__isnull=False).order_by("-id")
@@ -1375,7 +1375,7 @@ class CrearCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
 
 
 class VerCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
-    allowed_roles = ["admin", "calidad", "consulta"]
+    allowed_roles = ["admin", "control calidad"]
 
     def get(self, request, pk):
         certificado = get_object_or_404(
@@ -1412,7 +1412,7 @@ class VerCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
 
 
 class ImprimirCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
-    allowed_roles = ["admin", "calidad"]
+    allowed_roles = ["admin", "control calidad"]
 
     def get(self, request, pk):
         certificado = get_object_or_404(
@@ -1449,7 +1449,7 @@ class ImprimirCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
 
 
 class DescargarCertificadoPDFView(LoginRequiredMixin, RoleRequiredMixin, View):
-    allowed_roles = ["admin", "calidad"]
+    allowed_roles = ["admin", "control calidad"]
 
     def get(self, request, pk):
         from django.http import HttpResponse
@@ -1504,8 +1504,8 @@ class DescargarCertificadoPDFView(LoginRequiredMixin, RoleRequiredMixin, View):
         return response
 
 
-class ApiInspccionesView(LoginRequiredMixin, View):
-    allowed_roles = ["admin", "calidad"]
+class ApiInspccionesView(LoginRequiredMixin, RoleRequiredMixin, View):
+    allowed_roles = ["lab", "control calidad", "admin"]
 
     def get(self, request):
         from django.http import JsonResponse

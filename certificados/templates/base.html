@@ -256,28 +256,28 @@
             </a>
             {% endif %}
 
-            {% if user.rol == 'lab' or user.rol == 'admin' %}
+            {% if user.rol == 'lab' or user.rol == 'control calidad' or user.rol == 'admin' %}
             <div class="nav-section">Laboratorio</div>
             <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="{% if request.resolver_match.url_name == 'iniciar_inspeccion_pendientes' or request.resolver_match.url_name == 'iniciar_inspeccion' or request.resolver_match.url_name == 'registro_resultados' or request.resolver_match.url_name == 'nueva_inspeccion' %}active{% endif %}">
                 <i class="bi bi-clipboard-data"></i> Inspecciones Pendientes
             </a>
             {% endif %}
 
-            {% if user.rol == 'calidad' or user.rol == 'admin' or user.rol == 'consulta' %}
+            {% if user.rol == 'control calidad' or user.rol == 'aseguramiento calidad' or user.rol == 'admin' %}
             <div class="nav-section">Calidad</div>
             <a href="{% url 'certificados_list' %}" class="{% if request.resolver_match.url_name == 'certificados_list' or request.resolver_match.url_name == 'crear_certificado' or request.resolver_match.url_name == 'editar_certificado' or request.resolver_match.url_name == 'ver_certificado' %}active{% endif %}">
                 <i class="bi bi-award"></i> Certificados
             </a>
             {% endif %}
 
-            {% if user.rol == 'calidad' or user.rol == 'admin' or user.rol == 'consulta' %}
+            {% if user.rol == 'aseguramiento calidad' or user.rol == 'gerente planta' or user.rol == 'director operaciones' or user.rol == 'admin' %}
             <div class="nav-section">Estadísticas</div>
             <a href="{% url 'estadisticas' %}" class="{% if request.resolver_match.url_name == 'estadisticas' %}active{% endif %}">
                 <i class="bi bi-graph-up"></i> Estadísticas
             </a>
             {% endif %}
 
-            {% if user.rol == 'almacen' or user.rol == 'admin' %}
+            {% if user.rol == 'operaciones' or user.rol == 'admin' %}
             <div class="nav-section">Almacén</div>
             <a href="{% url 'lote_list' %}" class="{% if request.resolver_match.url_name == 'lote_list' or request.resolver_match.url_name == 'lote_create' %}active{% endif %}">
                 <i class="bi bi-box-seam"></i> Lotes

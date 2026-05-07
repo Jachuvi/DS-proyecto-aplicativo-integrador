@@ -42,10 +42,40 @@ if not Usuario.objects.filter(correo='calidad@test.com').exists():
     Usuario.objects.create_user(
         correo='calidad@test.com',
         nombre='Calidad User',
-        rol='aseguramineto calidad',
+        rol='aseguramiento calidad',
         password='password123'
     )
     print("Calidad user created: calidad@test.com / password123")
+
+# Create Control Calidad User
+if not Usuario.objects.filter(correo='controlcalidad@test.com').exists():
+    Usuario.objects.create_user(
+        correo='controlcalidad@test.com',
+        nombre='Control Calidad User',
+        rol='control calidad',
+        password='password123'
+    )
+    print("Control Calidad user created: controlcalidad@test.com / password123")
+
+# Create Gerente Planta User
+if not Usuario.objects.filter(correo='gerenteplanta@test.com').exists():
+    Usuario.objects.create_user(
+        correo='gerenteplanta@test.com',
+        nombre='Gerente Planta User',
+        rol='gerente planta',
+        password='password123'
+    )
+    print("Gerente Planta user created: gerenteplanta@test.com / password123")
+
+# Create Director Operaciones User
+if not Usuario.objects.filter(correo='directoroperaciones@test.com').exists():
+    Usuario.objects.create_user(
+        correo='directoroperaciones@test.com',
+        nombre='Director Operaciones User',
+        rol='director operaciones',
+        password='password123'
+    )
+    print("Director Operaciones user created: directoroperaciones@test.com / password123")
 
 if not Usuario.objects.filter(correo='almacen@test.com').exists():
     Usuario.objects.create_user(

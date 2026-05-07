@@ -30,11 +30,14 @@ class UsuarioManager(BaseUserManager):
 
 class Usuario(AbstractBaseUser, PermissionsMixin):
     ROLES = (
+        ("ventas", "Ventas"),
         ("lab", "Laboratorio"),
-        ("aseguramineto calidad", "Aseguramiento Calidad"),
-        ("control calidad", "Control calidad"),
+        ("aseguramiento calidad", "Aseguramiento Calidad"),
+        ("control calidad", "Control Calidad"),
         ("planta", "Planta"),
         ("operaciones", "Operaciones"),
+        ("gerente planta", "Gerente de Planta"),
+        ("director operaciones", "Director de Operaciones"),
         ("admin", "Administrador"),
     )
     nombre = models.CharField(max_length=120)
@@ -377,11 +380,17 @@ class Resultado(models.Model):
     desvio_vs_ref = models.DecimalField(max_digits=8, decimal_places=2, editable=False)
 
     def save(self, *args, **kwargs):
-        # Regla de derivación empírica: valor absoluto de la diferencia entre valor_obtenido y los límites
-        if self.valor_obtenido > self.parametro.ref_max:
-            self.desvio_vs_ref = abs(self.valor_obtenido - self.parametro.ref_max)
-        elif self.valor_obtenido < self.parametro.ref_min:
-            self.desvio_vs_ref = abs(self.valor_obtenido - self.parametro.ref_min)
+        from decimal import Decimal
+        if isinstance(self.valor_obtenido, str):
+            self.valor_obtenido = Decimal(self.valor_obtenido)
+        
+        ref_min = self.parametro.ref_min
+        ref_max = self.parametro.ref_max
+        
+        if self.valor_obtenido > ref_max:
+            self.desvio_vs_ref = abs(self.valor_obtenido - ref_max)
+        elif self.valor_obtenido < ref_min:
+            self.desvio_vs_ref = abs(self.valor_obtenido - ref_min)
         else:
             self.desvio_vs_ref = 0
         super().save(*args, **kwargs)
