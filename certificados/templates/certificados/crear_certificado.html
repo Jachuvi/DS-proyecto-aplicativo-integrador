@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Nuevo Certificado{% endblock %}
+{% block page_title %}Nuevo Certificado{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-4">Crear Certificado de Calidad</h2>
+        
+        {% if error %}
+        <div class="alert alert-danger">{{ error }}</div>
+        {% endif %}
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label class="form-label">Lote</label>
+                    <select name="lote" id="loteSelect" class="form-select" required>
+                        <option value="">Seleccione un lote...</option>
+                        {% for lote in lotes %}
+                        <option value="{{ lote.id }}">{{ lote.codigo_lote }}-{{ lote.secuencia }} - {{ lote.producto.nombre|default:"Sin producto" }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Inspección</label>
+                    <select name="inspeccion" id="inspeccionSelect" class="form-select" required disabled>
+                        <option value="">Seleccione una inspección...</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn-brand">Crear Certificado</button>
+                <a href="{% url 'certificados_list' %}" class="btn-brand-outline">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    document.getElementById('loteSelect').addEventListener('change', function() {
+        var loteId = this.value;
+        var inspeccionSelect = document.getElementById('inspeccionSelect');
+        
+        inspeccionSelect.innerHTML = '<option value="">Cargando...</option>';
+        inspeccionSelect.disabled = true;
+        
+        if (!loteId) {
+            inspeccionSelect.innerHTML = '<option value="">Seleccione una inspección...</option>';
+            return;
+        }
+        
+        fetch('/calidad/certificados/api/inspecciones/?lote_id=' + loteId)
+            .then(function(response) { return response.json(); })
+            .then(function(data) {
+                inspeccionSelect.innerHTML = '<option value="">Seleccione una inspección...</option>';
+                data.forEach(function(insp) {
+                    var option = document.createElement('option');
+                    option.value = insp.id;
+                    option.textContent = insp.clave + ' - ' + insp.fecha;
+                    inspeccionSelect.appendChild(option);
+                });
+                inspeccionSelect.disabled = false;
+            });
+    });
+</script>
+{% endblock %}

@@ -7,20 +7,28 @@ urlpatterns = [
     # Ventas
     path('pedidos/registro/', views.RegistroDePedidoView.as_view(), name='registro_pedido'),
 
-    # Laboratorio
-    path('pedidos/recepcion/', views.RecepcionPedidoView.as_view(), name='recepcion_pedidos'),
-    path('pedidos/iniciar/<int:pedido_id>/', views.IniciarInspeccionView.as_view(), name='iniciar_inspeccion'),
+# Laboratorio
+    path('laboratorio/inspecciones/', views.InspeccionesPendientesView.as_view(), name='iniciar_inspeccion_pendientes'),
+    path('laboratorio/lote/<int:lote_id>/iniciar/', views.IniciarInspeccionFromLoteView.as_view(), name='iniciar_inspeccion'),
+    path('laboratorio/lote/<int:lote_id>/nueva-inspeccion/', views.IniciarInspeccionFromLoteView.as_view(), name='nueva_inspeccion'),
     path('inspeccion/registro/<int:pk>/', views.RegistroResultadosView.as_view(), name='registro_resultados'),
 
     # Calidad
-    path('certificados/consulta/', views.ConsultaCertificadosView.as_view(), name='consulta_certificados'),
-    path('certificados/<int:pk>/aprobar/', views.AprobarCertificadoView.as_view(), name='aprobar_certificado'),
-    path('certificados/<int:pk>/editar/', views.EditarCertificadoView.as_view(), name='editar_certificado'),
-    path('certificados/<int:pk>/leido.png', views.CertificadoLeidoView.as_view(), name='certificado_leido'),
+    path('calidad/certificados/', views.CertificadosListView.as_view(), name='certificados_list'),
+    path('calidad/certificados/nuevo/', views.CrearCertificadoView.as_view(), name='crear_certificado'),
+    path('calidad/certificados/api/inspecciones/', views.ApiInspccionesView.as_view(), name='api_inspecciones'),
+    path('calidad/certificados/<int:pk>/ver/', views.VerCertificadoView.as_view(), name='ver_certificado'),
+    path('calidad/certificados/<int:pk>/imprimir/', views.ImprimirCertificadoView.as_view(), name='imprimir_certificado'),
+    path('calidad/certificados/<int:pk>/descargar/', views.DescargarCertificadoPDFView.as_view(), name='descargar_certificado'),
+    path('calidad/certificados/<int:pk>/editar/', views.EditarCertificadoView.as_view(), name='editar_certificado'),
 
     # Almacén
     path('despacho/pendientes/', views.PendientesDespachoView.as_view(), name='pendientes_despacho'),
     path('despacho/<int:pk>/registrar/', views.RegistrarDespachoView.as_view(), name='registrar_despacho'),
+    
+    # Almacén - Lotes
+    path('almacen/lotes/', views.LoteListView.as_view(), name='lote_list'),
+    path('almacen/lotes/nuevo/', views.LoteCreateView.as_view(), name='lote_create'),
 
     # Administración — Clientes
     path('admin-catalogo/clientes/', views.ClienteListView.as_view(), name='cliente_list'),

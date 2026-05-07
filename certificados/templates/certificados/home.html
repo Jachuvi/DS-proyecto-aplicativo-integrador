@@ -155,7 +155,7 @@
 
     {% if user.rol == 'lab' or user.rol == 'admin' %}
     <div class="col-md-4 col-sm-6">
-        <a href="{% url 'recepcion_pedidos' %}" class="action-card">
+        <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="action-card">
             <div class="icon"><i class="bi bi-clipboard-check"></i></div>
             <h3>Recepción de Pedidos</h3>
             <p>Revisa pedidos pendientes, asigna equipo de laboratorio e inicia la inspección.</p>
@@ -165,7 +165,7 @@
 
     {% if user.rol == 'calidad' or user.rol == 'admin' %}
     <div class="col-md-4 col-sm-6">
-        <a href="{% url 'consulta_certificados' %}" class="action-card">
+        <a href="{% url 'certificados_list' %}" class="action-card">
             <div class="icon"><i class="bi bi-award"></i></div>
             <h3>Consultar y Aprobar Certificados</h3>
             <p>Revisa certificados en borrador, aprúebalos y dispara el envío al cliente.</p>

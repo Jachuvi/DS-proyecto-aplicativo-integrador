@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% block title %}Nueva Inspección{% endblock %}
+{% block page_title %}Nueva Inspección{% endblock %}
+
+{% block content %}
+<div class="card mb-3">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-3">
+            {% if inspeccion_clave %}
+            Inspección {{ inspeccion_clave }}
+            {% endif %}
+            Lote {{ lote.folio }}
+        </h2>
+        <div class="row">
+            <div class="col-md-6"><strong>Producto:</strong> {{ lote.producto|default:"—" }}</div>
+            <div class="col-md-6"><strong>Cantidad:</strong> {{ lote.cantidad|default:"—" }}</div>
+            <div class="col-md-6 mt-2"><strong>Pedido:</strong> {{ lote.pedido|default:"—" }}</div>
+            <div class="col-md-6 mt-2"><strong>Fecha:</strong> {{ lote.fecha|date:"d/m/Y" }}</div>
+        </div>
+
+        {% if ultima_inspeccion %}
+        <hr class="my-3">
+        <p class="mb-2"><strong>Última inspección (#{{ ultima_inspeccion.id }}):</strong></p>
+        <div class="d-flex flex-wrap gap-2">
+            <span class="badge {% if ultima_inspeccion.cumple_param %}bg-success{% else %}bg-danger{% endif %}">
+                {% if ultima_inspeccion.cumple_param %}Cumple{% else %}No cumple{% endif %}
+            </span>
+            <span class="text-muted">{{ ultima_inspeccion.fecha_inspeccion|date:"d/m/Y H:i" }}</span>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<form method="post" id="inspeccionForm">
+    {% csrf_token %}
+    
+    <input type="hidden" name="equipo" id="hiddenEquipo">
+
+    <div class="card mb-3">
+        <div class="card-body p-4">
+            <h2 class="card-title mb-2">Parámetros Generales</h2>
+            <p class="text-muted small mb-3">Parámetros independientes del equipo.</p>
+            <div class="row g-3">
+                {% for p in parametros_global %}
+                <div class="col-md-4">
+                    <label class="form-label">{{ p.nombre }} ({{ p.unidad }})</label>
+                    <div class="input-group">
+                        <input type="number" step="0.01" name="param_{{ p.id }}" class="form-control" placeholder="Valor">
+                        <span class="input-group-text text-muted" style="font-size: 0.75rem;">{{ p.ref_min }} – {{ p.ref_max }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-body p-4">
+            <h2 class="card-title mb-2">Equipo y Parámetros Específicos</h2>
+            <div class="mb-3">
+                <label for="equipoSelect" class="form-label">Equipo de laboratorio</label>
+                <select name="equipoSelect" id="equipoSelect" class="form-select">
+                    <option value="">Seleccione un equipo...</option>
+                    {% for equipo in equipos %}
+                    <option value="{{ equipo.id }}" data-tipo="{{ equipo.tipo }}">{{ equipo.get_tipo_display }} — {{ equipo.serie }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div id="paramsAlveograma" style="display: none;">
+                <h6 class="fw-bold text-muted mb-2">Alveograma</h6>
+                <div class="row g-3">
+                    {% for p in parametros_alveograma %}
+                    <div class="col-md-4">
+                        <label class="form-label">{{ p.nombre }} ({{ p.unidad }})</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" name="param_{{ p.id }}" class="form-control" placeholder="Valor">
+                            <span class="input-group-text text-muted" style="font-size: 0.75rem;">{{ p.ref_min }} – {{ p.ref_max }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div id="paramsFarinograma" style="display: none;">
+                <h6 class="fw-bold text-muted mb-2">Farinograma</h6>
+                <div class="row g-3">
+                    {% for p in parametros_farinograma %}
+                    <div class="col-md-4">
+                        <label class="form-label">{{ p.nombre }} ({{ p.unidad }})</label>
+                        <div class="input-group">
+                            <input type="number" step="0.01" name="param_{{ p.id }}" class="form-control" placeholder="Valor">
+                            <span class="input-group-text text-muted" style="font-size: 0.75rem;">{{ p.ref_min }} – {{ p.ref_max }}</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn-brand">Guardar Resultados</button>
+        <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="btn-brand-outline">Cancelar</a>
+    </div>
+</form>
+
+<script>
+    document.querySelectorAll('form input, form select').forEach(el => {
+        if (el.tagName === 'SELECT') el.classList.add('form-select');
+        else if (el.type !== 'hidden') el.classList.add('form-control');
+    });
+
+    document.getElementById('inspeccionForm').addEventListener('submit', function(e) {
+        var equipoSelect = document.getElementById('equipoSelect');
+        if (!equipoSelect.value) {
+            e.preventDefault();
+            alert('Debe seleccionar un equipo.');
+            return;
+        }
+        document.getElementById('hiddenEquipo').value = equipoSelect.value;
+    });
+
+    document.getElementById('equipoSelect').addEventListener('change', function() {
+        var tipoEquipo = this.options[this.selectedIndex]?.dataset.tipo;
+        document.getElementById('paramsAlveograma').style.display = 'none';
+        document.getElementById('paramsFarinograma').style.display = 'none';
+        if (tipoEquipo === 'alveografo') {
+            document.getElementById('paramsAlveograma').style.display = 'block';
+        } else if (tipoEquipo === 'farinografo') {
+            document.getElementById('paramsFarinograma').style.display = 'block';
+        }
+    });
+</script>
+{% endblock %}

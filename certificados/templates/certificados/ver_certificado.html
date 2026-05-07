@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Ver Certificado{% endblock %}
+{% block page_title %}Ver Certificado{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="card-title mb-0">Certificado #{{ certificado.id }}</h2>
+            <div class="d-flex gap-2">
+                <a href="{% url 'editar_certificado' certificado.pk %}" class="btn-brand-outline">Editar</a>
+                <a href="{% url 'imprimir_certificado' certificado.pk %}" class="btn-brand-outline" target="_blank">Imprimir</a>
+                <a href="{% url 'descargar_certificado' certificado.pk %}" class="btn-brand">Descargar PDF</a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="text-muted mb-3">Datos del Lote</h5>
+                <p><strong>Número de lote:</strong> {{ certificado.inspeccion.lote.codigo_lote }}-{{ certificado.inspeccion.lote.secuencia }}</p>
+                <p><strong>Producto:</strong> {{ certificado.inspeccion.lote.producto.nombre|default:"—" }}</p>
+                <p><strong>Cantidad:</strong> {{ certificado.inspeccion.lote.cantidad|default:"—" }}</p>
+                <p><strong>Fecha de caducidad:</strong> {{ certificado.fecha_caducidad|date:"d/m/Y"|default:"—" }}</p>
+            </div>
+            <div class="col-md-6">
+                <h5 class="text-muted mb-3">Datos del Pedido</h5>
+                <p><strong>Orden de compra:</strong> #{{ certificado.pedido.id }}</p>
+                <p><strong>Cliente:</strong> {{ certificado.pedido.cliente.nombre }}</p>
+                <p><strong>Cantidad solicitada:</strong> {{ certificado.pedido.cantidad }}</p>
+                <p><strong>Número de factura:</strong> {{ certificado.numero_factura|default:"—" }}</p>
+            </div>
+        </div>
+
+        <hr class="my-4">
+
+        <h5 class="text-muted mb-3">Resultados de Análisis</h5>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Parámetro</th>
+                    <th>Valor Obtenido</th>
+                    <th>Referencia</th>
+                    <th>Desviación</th>
+                    <th>Cumple</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for res in certificado.inspeccion.resultados.all %}
+                <tr>
+                    <td>{{ res.parametro.nombre }}</td>
+                    <td><strong>{{ res.valor_obtenido }}</strong> {{ res.parametro.unidad }}</td>
+                    <td>{{ res.parametro.ref_min }} - {{ res.parametro.ref_max }}</td>
+                    <td>{{ res.desvio_vs_ref }}</td>
+                    <td>
+                        {% if res.valor_obtenido >= res.parametro.ref_min and res.valor_obtenido <= res.parametro.ref_max %}
+                        <span class="badge bg-success">Sí</span>
+                        {% else %}
+                        <span class="badge bg-danger">No</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

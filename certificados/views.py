@@ -3,7 +3,7 @@ import string
 from datetime import timedelta
 
 from django.conf import settings
-from django.shortcuts import redirect, get_object_or_404
+from django.shortcuts import redirect, get_object_or_404, render
 from django.urls import reverse_lazy, reverse
 from django.views.generic import ListView, CreateView, UpdateView, TemplateView, View
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
@@ -91,7 +91,7 @@ class RegistroDePedidoView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     model = Pedido
     fields = ["cliente", "producto", "cantidad"]
     template_name = "certificados/pedido_form.html"
-    success_url = reverse_lazy("recepcion_pedidos")
+    success_url = reverse_lazy("iniciar_inspeccion_pendientes")
     allowed_roles = ["ventas"]
 
     def form_valid(self, form):
@@ -208,7 +208,7 @@ class RegistroResultadosView(LoginRequiredMixin, RoleRequiredMixin, UpdateView):
     model = Inspeccion
     fields = []
     template_name = "certificados/registro_resultados.html"
-    success_url = reverse_lazy("recepcion_pedidos")
+    success_url = reverse_lazy("iniciar_inspeccion_pendientes")
     allowed_roles = ["lab"]
 
     def get_context_data(self, **kwargs):
@@ -507,6 +507,41 @@ class EditarCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
             "Si cumple, se generará un nuevo certificado en borrador.",
         )
         return redirect("consulta_certificados")
+
+
+# ---------------------------------------------------------------------------
+# Almacén — Lotes
+# ---------------------------------------------------------------------------
+class LoteListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
+    model = Lote
+    template_name = "certificados/almacen_lotes.html"
+    context_object_name = "lotes"
+    allowed_roles = ["almacen", "lab", "admin"]
+
+    def get_queryset(self):
+        return Lote.objects.select_related("pedido__cliente", "producto").order_by("-id")
+
+
+class LoteCreateView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
+    model = Lote
+    fields = ["producto", "cantidad", "fecha_caducidad"]
+    template_name = "certificados/almacen_crear_lote.html"
+    success_url = reverse_lazy("lote_list")
+    allowed_roles = ["almacen", "admin"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["productos"] = Producto.objects.filter(activo=True)
+        return ctx
+
+    def form_valid(self, form):
+        import random
+        import string
+        suffix = ''.join(random.choices(string.ascii_uppercase + string.digits, k=5))
+        form.instance.codigo_lote = f"L-{suffix}"
+        form.instance.secuencia = "A"
+        messages.success(self.request, f"Lote '{form.instance.codigo_lote}-A' creado.")
+        return super().form_valid(form)
 
 
 # ---------------------------------------------------------------------------
@@ -1032,3 +1067,229 @@ class HistorialLoteIndexView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         return Lote.objects.select_related("pedido__cliente").order_by("-id")
+
+
+class InspeccionesPendientesView(LoginRequiredMixin, RoleRequiredMixin, ListView):
+    model = Lote
+    template_name = "certificados/inspecciones_pendientes.html"
+    context_object_name = "lotes"
+    allowed_roles = ["lab"]
+
+    def get_queryset(self):
+        lotes = Lote.objects.select_related("pedido__cliente", "producto").filter(pedido__isnull=False).order_by("-id")
+        filter_type = self.request.GET.get("filter", "pendientes")
+        if filter_type == "pendientes":
+            lotes = lotes.filter(inspeccion__isnull=True)
+        elif filter_type == "inspeccionados":
+            lotes = lotes.filter(inspeccion__isnull=False).distinct()
+        return lotes
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["filter"] = self.request.GET.get("filter", "pendientes")
+        return ctx
+
+
+class IniciarInspeccionFromLoteView(LoginRequiredMixin, RoleRequiredMixin, View):
+    allowed_roles = ["lab"]
+
+    def get(self, request, lote_id):
+        lote = get_object_or_404(Lote, id=lote_id)
+        equipos = Equipo.objects.filter(activo=True)
+        parametros = Parametro.objects.filter(activo=True)
+        
+        cliente = None
+        overrides = {}
+        if lote.pedido and lote.pedido.cliente:
+            cliente = lote.pedido.cliente
+            for pc in cliente.parametros_cliente.filter(activo=True):
+                overrides[pc.parametro_id] = (pc.ref_min, pc.ref_max)
+        
+        count = Inspeccion.objects.filter(lote=lote).count()
+        letra = string.ascii_uppercase[count] if count < 26 else "Z"
+        lote_id_short = lote.folio.replace("L-", "") if lote.folio else str(lote.id)
+        inspeccion_clave = f"{letra}-{lote_id_short}"
+        
+        return render(request, "certificados/iniciar_inspeccion.html", {
+            "lote": lote,
+            "cliente": cliente,
+            "equipos": equipos,
+            "parametros": parametros,
+            "parametros_global": parametros.filter(equipo__isnull=True),
+            "parametros_alveograma": parametros.filter(equipo__tipo='alveografo'),
+            "parametros_farinograma": parametros.filter(equipo__tipo='farinografo'),
+            "inspeccion_clave": inspeccion_clave,
+            "param_ref_overrides": overrides,
+        })
+
+    def post(self, request, lote_id):
+        lote = get_object_or_404(Lote, id=lote_id)
+        equipo_id = request.POST.get("equipo") or request.POST.get("equipoSelect")
+        if not equipo_id:
+            overrides = {}
+            cliente_obj = None
+            if lote.pedido and lote.pedido.cliente:
+                cliente_obj = lote.pedido.cliente
+                overrides = {pc.parametro_id: (pc.ref_min, pc.ref_max) for pc in cliente_obj.parametros_cliente.filter(activo=True)}
+            return render(request, "certificados/iniciar_inspeccion.html", {
+                "lote": lote,
+                "cliente": cliente_obj,
+                "equipos": Equipo.objects.filter(activo=True),
+                "parametros": Parametro.objects.filter(activo=True),
+                "parametros_global": Parametro.objects.filter(equipo__isnull=True),
+                "parametros_alveograma": Parametro.objects.filter(equipo__tipo='alveografo'),
+                "parametros_farinograma": Parametro.objects.filter(equipo__tipo='farinografo'),
+                "param_ref_overrides": overrides,
+                "error": "Debe seleccionar un equipo.",
+            })
+        
+        equipo = get_object_or_404(Equipo, id=equipo_id)
+        
+        with transaction.atomic():
+            inspeccion = Inspeccion.objects.create(lote=lote, equipo=equipo)
+            
+            parametros = Parametro.objects.filter(activo=True)
+            
+            for p in parametros:
+                valor_key = f"param_{p.id}"
+                valor = request.POST.get(valor_key)
+                if valor:
+                    Resultado.objects.create(
+                        inspeccion=inspeccion,
+                        parametro=p,
+                        valor_obtenido=valor
+                    )
+            
+            inspeccion.cumple_param = True
+            inspeccion.save()
+        
+        return redirect("iniciar_inspeccion_pendientes")
+
+
+class CertificadosListView(LoginRequiredMixin, RoleRequiredMixin, ListView):
+    model = Certificado
+    template_name = "certificados/certificados_list.html"
+    context_object_name = "certificados"
+    allowed_roles = ["admin", "calidad", "consulta"]
+
+    def get_queryset(self):
+        return (
+            super()
+            .get_queryset()
+            .select_related("inspeccion__lote", "pedido__cliente", "aprobado_por")
+            .order_by("-fecha_emision")
+        )
+
+
+class CrearCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
+    allowed_roles = ["admin", "calidad"]
+
+    def get(self, request):
+        lotes = Lote.objects.filter(pedido__isnull=False).order_by("-id")
+        return render(request, "certificados/crear_certificado.html", {
+            "lotes": lotes,
+        })
+
+    def post(self, request):
+        lote_id = request.POST.get("lote")
+        inspeccion_id = request.POST.get("inspeccion")
+        
+        if not lote_id or not inspeccion_id:
+            return render(request, "certificados/crear_certificado.html", {
+                "lotes": Lote.objects.filter(pedido__isnull=False).order_by("-id"),
+                "error": "Debe seleccionar lote e inspección.",
+            })
+        
+        lote = get_object_or_404(Lote, id=lote_id)
+        inspeccion = get_object_or_404(Inspeccion, id=inspeccion_id)
+        
+        certificado = Certificado.objects.create(
+            inspeccion=inspeccion,
+            pedido=lote.pedido,
+        )
+        
+        return redirect("editar_certificado", pk=certificado.pk)
+
+
+class VerCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
+    allowed_roles = ["admin", "calidad", "consulta"]
+
+    def get(self, request, pk):
+        certificado = get_object_or_404(
+            Certificado.objects.select_related(
+                "inspeccion__lote__pedido__cliente",
+                "inspeccion__equipo",
+                "pedido__producto",
+                "aprobado_por"
+            ),
+            pk=pk
+        )
+        return render(request, "certificados/ver_certificado.html", {
+            "certificado": certificado,
+        })
+
+
+class ImprimirCertificadoView(LoginRequiredMixin, RoleRequiredMixin, View):
+    allowed_roles = ["admin", "calidad"]
+
+    def get(self, request, pk):
+        certificado = get_object_or_404(
+            Certificado.objects.select_related(
+                "inspeccion__lote__pedido__cliente",
+                "inspeccion__equipo",
+                "pedido__producto",
+                "aprobado_por"
+            ),
+            pk=pk
+        )
+        return render(request, "certificados/imprimir_certificado.html", {
+            "certificado": certificado,
+        })
+
+
+class DescargarCertificadoPDFView(LoginRequiredMixin, RoleRequiredMixin, View):
+    allowed_roles = ["admin", "calidad"]
+
+    def get(self, request, pk):
+        from django.http import HttpResponse
+        from xhtml2pdf import pisa
+        from io import BytesIO
+        import django.template.loader
+
+        certificado = get_object_or_404(
+            Certificado.objects.select_related(
+                "inspeccion__lote__pedido__cliente",
+                "inspeccion__equipo",
+                "pedido__producto",
+                "aprobado_por"
+            ),
+            pk=pk
+        )
+
+        template = django.template.loader.get_template("certificados/imprimir_certificado.html")
+        html = template.render({"certificado": certificado, "pdf_mode": True})
+
+        buffer = BytesIO()
+        pisa_status = pisa.CreatePDF(html, dest=buffer)
+
+        buffer.seek(0)
+        response = HttpResponse(buffer.read(), content_type="application/pdf")
+        response["Content-Disposition"] = f'attachment; filename="certificado_{certificado.folio}.pdf"'
+        return response
+
+
+class ApiInspccionesView(LoginRequiredMixin, View):
+    allowed_roles = ["admin", "calidad"]
+
+    def get(self, request):
+        from django.http import JsonResponse
+        lote_id = request.GET.get("lote_id")
+        if not lote_id:
+            return JsonResponse([])
+        
+        inspecciones = Inspeccion.objects.filter(lote_id=lote_id).order_by("-id")
+        data = [
+            {"id": i.id, "clave": i.clave, "fecha": i.fecha_inspeccion.strftime("%d/%m/%Y")}
+            for i in inspecciones
+        ]
+        return JsonResponse(data, safe=False)

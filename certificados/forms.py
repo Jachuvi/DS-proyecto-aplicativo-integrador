@@ -8,73 +8,47 @@ class ClienteForm(forms.ModelForm):
         fields = [
             "nombre",
             "rfc",
-            "calle",
-            "numero_exterior",
-            "numero_interior",
-            "colonia",
-            "codigo_postal",
-            "ciudad",
-            "estado",
+            "direccion_fiscal_calle",
+            "direccion_fiscal_numero",
+            "direccion_fiscal_interior",
+            "direccion_fiscal_colonia",
+            "direccion_fiscal_codigo_postal",
+            "direccion_fiscal_ciudad",
+            "direccion_fiscal_estado",
+            "direccion_entrega_misma",
+            "direccion_entrega_calle",
+            "direccion_entrega_numero",
+            "direccion_entrega_interior",
+            "direccion_entrega_colonia",
+            "direccion_entrega_codigo_postal",
+            "direccion_entrega_ciudad",
+            "direccion_entrega_estado",
             "contacto",
             "correo_contacto",
             "requiere_certificado",
             "clave_doc_especificaciones",
         ]
         widgets = {
-            "calle": forms.TextInput(
-                attrs={
-                    "placeholder": "Calle",
-                    "class": "form-control",
-                    "data-autocomplete": "street_address",
-                }
-            ),
-            "numero_exterior": forms.TextInput(
-                attrs={"placeholder": "Número exterior", "class": "form-control"}
-            ),
-            "numero_interior": forms.TextInput(
-                attrs={
-                    "placeholder": "Número interior (opcional)",
-                    "class": "form-control",
-                }
-            ),
-            "colonia": forms.TextInput(
-                attrs={
-                    "placeholder": "Colonia",
-                    "class": "form-control",
-                    "data-autocomplete": "neighborhood",
-                }
-            ),
-            "codigo_postal": forms.TextInput(
-                attrs={
-                    "placeholder": "Código postal",
-                    "class": "form-control",
-                    "maxlength": "5",
-                    "data-autocomplete": "postal_code",
-                }
-            ),
-            "ciudad": forms.TextInput(
-                attrs={
-                    "placeholder": "Ciudad",
-                    "class": "form-control",
-                    "data-autocomplete": "administrative_area_level_2",
-                }
-            ),
-            "estado": forms.TextInput(
-                attrs={
-                    "placeholder": "Estado",
-                    "class": "form-control",
-                    "data-autocomplete": "administrative_area_level_1",
-                }
-            ),
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
             "rfc": forms.TextInput(attrs={"class": "form-control", "maxlength": "13"}),
+            "direccion_fiscal_calle": forms.TextInput(attrs={"class": "form-control", "placeholder": "Calle"}),
+            "direccion_fiscal_numero": forms.TextInput(attrs={"class": "form-control", "placeholder": "Número"}),
+            "direccion_fiscal_interior": forms.TextInput(attrs={"class": "form-control", "placeholder": "Interior (opcional)"}),
+            "direccion_fiscal_colonia": forms.TextInput(attrs={"class": "form-control", "placeholder": "Colonia"}),
+            "direccion_fiscal_codigo_postal": forms.TextInput(attrs={"class": "form-control", "placeholder": "CP", "maxlength": "5"}),
+            "direccion_fiscal_ciudad": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ciudad"}),
+            "direccion_fiscal_estado": forms.TextInput(attrs={"class": "form-control", "placeholder": "Estado"}),
+            "direccion_entrega_misma": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "direccion_entrega_calle": forms.TextInput(attrs={"class": "form-control", "placeholder": "Calle"}),
+            "direccion_entrega_numero": forms.TextInput(attrs={"class": "form-control", "placeholder": "Número"}),
+            "direccion_entrega_interior": forms.TextInput(attrs={"class": "form-control", "placeholder": "Interior (opcional)"}),
+            "direccion_entrega_colonia": forms.TextInput(attrs={"class": "form-control", "placeholder": "Colonia"}),
+            "direccion_entrega_codigo_postal": forms.TextInput(attrs={"class": "form-control", "placeholder": "CP", "maxlength": "5"}),
+            "direccion_entrega_ciudad": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ciudad"}),
+            "direccion_entrega_estado": forms.TextInput(attrs={"class": "form-control", "placeholder": "Estado"}),
             "contacto": forms.TextInput(attrs={"class": "form-control"}),
             "correo_contacto": forms.EmailInput(attrs={"class": "form-control"}),
-            "requiere_certificado": forms.CheckboxInput(
-                attrs={"class": "form-check-input"}
-            ),
-            "clave_doc_especificaciones": forms.TextInput(
-                attrs={"class": "form-control"}
-            ),
+            "requiere_certificado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "clave_doc_especificaciones": forms.TextInput(attrs={"class": "form-control"}),
         }
 

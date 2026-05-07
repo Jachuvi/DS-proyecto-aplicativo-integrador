@@ -1,0 +1,85 @@
+{% extends "base.html" %}
+{% load custom_filters %}
+{% block title %}Inspecciones Pendientes{% endblock %}
+{% block page_title %}Inspecciones Pendientes{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-1">Inspecciones Pendientes</h2>
+        <p class="text-muted mb-4">Gestión de inspecciones de calidad por lote.</p>
+
+        <ul class="nav nav-tabs mb-4">
+            <li class="nav-item">
+                <a class="nav-link {% if filter == 'pendientes' %}active{% endif %}" href="?filter=pendientes">Pendientes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if filter == 'inspeccionados' %}active{% endif %}" href="?filter=inspeccionados">Inspeccionados</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if filter == 'todos' %}active{% endif %}" href="?filter=todos">Todos</a>
+            </li>
+        </ul>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th>Folio</th>
+                        <th>Producto</th>
+                        <th>Cantidad</th>
+                        <th>Pedido</th>
+                        <th>Fecha Producción</th>
+                        <th>Última Inspección</th>
+                        <th class="text-end">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for lote in lotes %}
+                    <tr>
+                        <td><strong>{{ lote.codigo_lote }}-{{ lote.secuencia }}</strong></td>
+                        <td>{{ lote.producto.nombre|default:"—" }}</td>
+                        <td>{{ lote.cantidad|default:"—" }}</td>
+                        <td>{{ lote.pedido.id|default:"—" }}</td>
+                        <td>{{ lote.fecha_produccion|date:"d/m/Y"|default:"—" }}</td>
+                        <td>
+                            {% with inspecciones=lote.inspeccion_set.all %}
+                            {% if inspecciones %}
+                            <span class="badge {% if inspecciones.0.cumple_param %}bg-success{% else %}bg-danger{% endif %}">
+                                {% if inspecciones.0.cumple_param %}Cumple{% else %}No cumple{% endif %}
+                            </span>
+                            <span class="text-muted small">{{ inspecciones.0.fecha_inspeccion|date:"d/m/Y" }}</span>
+                            {% if inspecciones|length > 1 %}
+                            <span class="badge bg-secondary ms-1">+{{ inspecciones|length|add:"-1" }}</span>
+                            {% endif %}
+                            {% else %}
+                            <span class="text-muted">—</span>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        <td class="text-end">
+                            {% if lote.inspeccion_set.first %}
+                            <a href="{% url 'nueva_inspeccion' lote.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-plus"></i> Registro análisis subsecuente
+                            </a>
+                            {% else %}
+                            <a href="{% url 'iniciar_inspeccion' lote.id %}" class="btn-brand">
+                                <i class="bi bi-play"></i> Registro análisis inicial
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="7" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox" style="font-size: 1.8rem; opacity: 0.5;"></i><br>
+                            No hay lotes.
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

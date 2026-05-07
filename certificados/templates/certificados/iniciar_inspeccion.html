@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 {% block title %}Iniciar Inspección{% endblock %}
 {% block page_title %}Iniciar Inspección{% endblock %}
 
@@ -63,7 +64,7 @@
 
             <div class="d-flex gap-2 mt-4">
                 <button type="submit" class="btn-brand">Iniciar Inspección</button>
-                <a href="{% url 'recepcion_pedidos' %}" class="btn-brand-outline">Cancelar</a>
+                <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="btn-brand-outline">Cancelar</a>
             </div>
         </form>
     </div>
