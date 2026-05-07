@@ -998,27 +998,37 @@ class EstadisticasView(LoginRequiredMixin, RoleRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        from certificados.models import Venta, Lote
 
         hoy = timezone.now()
         inicio = (hoy - timedelta(days=365)).replace(day=1)
-        por_mes = (
-            Certificado.objects.filter(fecha_emision__gte=inicio)
-            .annotate(mes=TruncMonth("fecha_emision"))
+        inicio_mes_actual = hoy.replace(day=1)
+
+        # Ventas statistics
+        total_ventas = Venta.objects.count()
+        ventas_mes_actual = Venta.objects.filter(fecha_venta__gte=inicio_mes_actual).count()
+        ventas_por_estado = dict(
+            Venta.objects.values_list("estado")
+            .annotate(total=Count("id"))
+            .values_list("estado", "total")
+        )
+        venta_estado_labels = [label for _, label in Venta.ESTADOS]
+        venta_estado_data = [ventas_por_estado.get(code, 0) for code, _ in Venta.ESTADOS]
+
+        # Ventas por mes (últimos 12 meses)
+        ventas_por_mes = (
+            Venta.objects.filter(fecha_venta__gte=inicio)
+            .annotate(mes=TruncMonth("fecha_venta"))
             .values("mes")
             .annotate(total=Count("id"))
             .order_by("mes")
         )
-        meses_labels = [row["mes"].strftime("%b %Y") for row in por_mes]
-        meses_data = [row["total"] for row in por_mes]
+        ventas_mes_labels = [row["mes"].strftime("%b %Y") for row in ventas_por_mes]
+        ventas_mes_data = [row["total"] for row in ventas_por_mes]
 
-        por_estado_cert = dict(
-            Certificado.objects.values_list("estado")
-            .annotate(total=Count("id"))
-            .values_list("estado", "total")
-        )
-        estado_labels = [label for _, label in Certificado.ESTADOS]
-        estado_data = [por_estado_cert.get(code, 0) for code, _ in Certificado.ESTADOS]
-
+        # Pedidos statistics
+        total_pedidos = Pedido.objects.count()
+        pedidos_mes_actual = Pedido.objects.filter(fecha_pedido__gte=inicio_mes_actual).count()
         por_estado_ped = dict(
             Pedido.objects.values_list("estado")
             .annotate(total=Count("id"))
@@ -1027,6 +1037,35 @@ class EstadisticasView(LoginRequiredMixin, RoleRequiredMixin, TemplateView):
         ped_labels = [label for _, label in Pedido.ESTADOS]
         ped_data = [por_estado_ped.get(code, 0) for code, _ in Pedido.ESTADOS]
 
+        # Certificados statistics
+        total_certificados = Certificado.objects.count()
+        certificados_mes_actual = Certificado.objects.filter(fecha_emision__gte=inicio_mes_actual).count()
+        por_estado_cert = dict(
+            Certificado.objects.values_list("estado")
+            .annotate(total=Count("id"))
+            .values_list("estado", "total")
+        )
+        estado_labels = [label for _, label in Certificado.ESTADOS]
+        estado_data = [por_estado_cert.get(code, 0) for code, _ in Certificado.ESTADOS]
+
+        # Certificados por mes (últimos 12 meses)
+        cert_por_mes = (
+            Certificado.objects.filter(fecha_emision__gte=inicio)
+            .annotate(mes=TruncMonth("fecha_emision"))
+            .values("mes")
+            .annotate(total=Count("id"))
+            .order_by("mes")
+        )
+        meses_labels = [row["mes"].strftime("%b %Y") for row in cert_por_mes]
+        meses_data = [row["total"] for row in cert_por_mes]
+
+        # Inspecciones statistics
+        total_insp = Inspeccion.objects.count()
+        cumplen = Inspeccion.objects.filter(cumple_param=True).count()
+        no_cumplen = total_insp - cumplen
+        tasa = round(cumplen * 100 / total_insp, 1) if total_insp else 0
+
+        # Top clientes
         top_clientes = (
             Cliente.objects.annotate(num_cert=Count("pedido__certificado"))
             .filter(num_cert__gt=0)
@@ -1035,35 +1074,83 @@ class EstadisticasView(LoginRequiredMixin, RoleRequiredMixin, TemplateView):
         clientes_labels = [c.nombre for c in top_clientes]
         clientes_data = [c.num_cert for c in top_clientes]
 
-        total_insp = Inspeccion.objects.count()
-        cumplen = Inspeccion.objects.filter(cumple_param=True).count()
-        no_cumplen = total_insp - cumplen
-        tasa = round(cumplen * 100 / total_insp, 1) if total_insp else 0
-
-        ctx.update(
-            {
-                "meses_labels": meses_labels,
-                "meses_data": meses_data,
-                "estado_labels": estado_labels,
-                "estado_data": estado_data,
-                "ped_labels": ped_labels,
-                "ped_data": ped_data,
-                "clientes_labels": clientes_labels,
-                "clientes_data": clientes_data,
-                "total_insp": total_insp,
-                "cumplen": cumplen,
-                "no_cumplen": no_cumplen,
-                "tasa": tasa,
-                "total_certificados": Certificado.objects.count(),
-                "total_aprobados": Certificado.objects.filter(
-                    estado="aprobado"
-                ).count(),
-                "total_despachados": Certificado.objects.filter(
-                    estado="despachado"
-                ).count(),
-                "total_leidos": Certificado.objects.filter(leido_cliente=True).count(),
-            }
+        # Top productos
+        top_productos = (
+            Pedido.objects.filter(producto__isnull=False)
+            .values("producto__nombre")
+            .annotate(total=Count("id"))
+            .order_by("-total")[:5]
         )
+        producto_labels = [row["producto__nombre"] for row in top_productos]
+        producto_data = [row["total"] for row in top_productos]
+
+        # Lotes statistics
+        total_lotes = Lote.objects.count()
+        lotes_sin_inspeccion = Lote.objects.filter(inspeccion__isnull=True).count()
+
+        # Parámetros por tasa de cumplimiento
+        from django.db.models import Q
+        param_stats = []
+        for param in Parametro.objects.filter(activo=True):
+            resultados = Resultado.objects.filter(parametro=param)
+            total = resultados.count()
+            if total > 0:
+                # Calcular cumplimiento usando las referencias del parámetro
+                cumple_count = 0
+                for res in resultados:
+                    if res.valor_obtenido >= param.ref_min and res.valor_obtenido <= param.ref_max:
+                        cumple_count += 1
+                tasa_cumple = round(cumple_count * 100 / total, 1)
+                param_stats.append({
+                    'nombre': param.nombre,
+                    'total': total,
+                    'cumple': cumple_count,
+                    'tasa': tasa_cumple
+                })
+
+        # Ordenar por tasa de cumplimiento (peores primero)
+        param_stats.sort(key=lambda x: x['tasa'])
+        param_tasa_labels = [p['nombre'][:20] + '...' if len(p['nombre']) > 20 else p['nombre'] for p in param_stats[:10]]
+        param_tasa_data = [p['tasa'] for p in param_stats[:10]]
+
+        ctx.update({
+            # Ventas
+            "total_ventas": total_ventas,
+            "ventas_mes_actual": ventas_mes_actual,
+            "venta_estado_labels": venta_estado_labels,
+            "venta_estado_data": venta_estado_data,
+            "ventas_mes_labels": ventas_mes_labels,
+            "ventas_mes_data": ventas_mes_data,
+            # Pedidos
+            "total_pedidos": total_pedidos,
+            "pedidos_mes_actual": pedidos_mes_actual,
+            "ped_labels": ped_labels,
+            "ped_data": ped_data,
+            # Certificados
+            "total_certificados": total_certificados,
+            "certificados_mes_actual": certificados_mes_actual,
+            "estado_labels": estado_labels,
+            "estado_data": estado_data,
+            "meses_labels": meses_labels,
+            "meses_data": meses_data,
+# Inspecciones
+            "total_insp": total_insp,
+            "cumplen": cumplen,
+            "no_cumplen": no_cumplen,
+            "tasa": tasa,
+            # Otros
+            "clientes_labels": clientes_labels,
+            "clientes_data": clientes_data,
+            "producto_labels": producto_labels,
+            "producto_data": producto_data,
+            "total_lotes": total_lotes,
+            "lotes_sin_inspeccion": lotes_sin_inspeccion,
+            "total_leidos": Certificado.objects.filter(leido_cliente=True).count(),
+            "total_aprobados": Certificado.objects.filter(estado="aprobado").count(),
+            "total_despachados": Certificado.objects.filter(estado="despachado").count(),
+            "param_tasa_labels": param_tasa_labels,
+            "param_tasa_data": param_tasa_data,
+        })
         return ctx
 
 

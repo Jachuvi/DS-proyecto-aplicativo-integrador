@@ -10,6 +10,10 @@
         box-shadow: 0 2px 10px rgba(26, 42, 94, 0.06);
         border-left: 4px solid #1a2a5e;
     }
+    .kpi-card.ventas { border-left-color: #198754; }
+    .kpi-card.pedidos { border-left-color: #0d6efd; }
+    .kpi-card.calidad { border-left-color: #dc3545; }
+    .kpi-card.inspecciones { border-left-color: #fd7e14; }
     .kpi-value { font-size: 1.8rem; font-weight: 700; color: #1a2a5e; line-height: 1; }
     .kpi-label { font-size: 0.85rem; color: #6c757d; margin-top: 6px; }
     .chart-card {
@@ -22,91 +26,214 @@
         margin: 0 0 16px;
     }
     .chart-wrap { position: relative; height: 280px; }
+    .section-title {
+        font-size: 1.2rem; font-weight: 600; color: #1a2a5e;
+        margin: 24px 0 16px; padding-bottom: 8px; border-bottom: 2px solid #e9ecef;
+    }
+    .section-title:first-child { margin-top: 0; }
 </style>
 {% endblock %}
 
 {% block content %}
+{# VENTAS KPIs #}
+<div class="section-title"><i class="bi bi-cart"></i> Ventas</div>
+<div class="row g-3 mb-2">
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card ventas">
+            <div class="kpi-value">{{ total_ventas }}</div>
+            <div class="kpi-label">Total de ventas</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card ventas">
+            <div class="kpi-value">{{ ventas_mes_actual }}</div>
+            <div class="kpi-label">Ventas este mes</div>
+        </div>
+    </div>
+</div>
 <div class="row g-3 mb-4">
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-value">{{ total_certificados }}</div>
-            <div class="kpi-label">Certificados emitidos (total)</div>
+    <div class="col-lg-6">
+        <div class="chart-card">
+            <h3><i class="bi bi-bar-chart-line"></i> Ventas por mes (últimos 12 meses)</h3>
+            <div class="chart-wrap"><canvas id="chartVentasMes"></canvas></div>
         </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-value">{{ total_aprobados }}</div>
-            <div class="kpi-label">Aprobados pendientes de despacho</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-value">{{ total_despachados }}</div>
-            <div class="kpi-label">Despachados al cliente</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-value">{{ tasa }}%</div>
-            <div class="kpi-label">Tasa de cumplimiento ({{ cumplen }}/{{ total_insp }})</div>
-        </div>
-    </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="kpi-card">
-            <div class="kpi-value">{{ total_leidos }}</div>
-            <div class="kpi-label">Certificados con acuse de lectura del cliente</div>
+    <div class="col-lg-6">
+        <div class="chart-card">
+            <h3><i class="bi bi-pie-chart"></i> Ventas por estado</h3>
+            <div class="chart-wrap"><canvas id="chartVentasEstado"></canvas></div>
         </div>
     </div>
 </div>
 
-<div class="row g-3">
-    <div class="col-lg-8">
-        <div class="chart-card">
-            <h3><i class="bi bi-bar-chart-line"></i> Certificados por mes (últimos 12 meses)</h3>
-            <div class="chart-wrap"><canvas id="chartMeses"></canvas></div>
+{# PEDIDOS KPIs #}
+<div class="section-title"><i class="bi bi-clipboard-data"></i> Pedidos</div>
+<div class="row g-3 mb-2">
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card pedidos">
+            <div class="kpi-value">{{ total_pedidos }}</div>
+            <div class="kpi-label">Total de pedidos</div>
         </div>
     </div>
-    <div class="col-lg-4">
-        <div class="chart-card">
-            <h3><i class="bi bi-pie-chart"></i> Certificados por estado</h3>
-            <div class="chart-wrap"><canvas id="chartEstado"></canvas></div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card pedidos">
+            <div class="kpi-value">{{ pedidos_mes_actual }}</div>
+            <div class="kpi-label">Pedidos este mes</div>
         </div>
     </div>
-
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card pedidos">
+            <div class="kpi-value">{{ total_lotes }}</div>
+            <div class="kpi-label">Total de lotes</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card pedidos">
+            <div class="kpi-value">{{ lotes_sin_inspeccion }}</div>
+            <div class="kpi-label">Lotes sin inspección</div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
     <div class="col-lg-6">
         <div class="chart-card">
-            <h3><i class="bi bi-clipboard-data"></i> Pedidos por estado</h3>
+            <h3><i class="bi bi-pie-chart"></i> Pedidos por estado</h3>
             <div class="chart-wrap"><canvas id="chartPedidos"></canvas></div>
         </div>
     </div>
     <div class="col-lg-6">
         <div class="chart-card">
-            <h3><i class="bi bi-trophy"></i> Top 5 clientes (certificados)</h3>
+            <h3><i class="bi bi-trophy"></i> Top 5 productos más solicitados</h3>
+            <div class="chart-wrap"><canvas id="chartProductos"></canvas></div>
+        </div>
+    </div>
+</div>
+
+{# CALIDAD KPIs #}
+<div class="section-title"><i class="bi bi-award"></i> Calidad - Certificados</div>
+<div class="row g-3 mb-2">
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card calidad">
+            <div class="kpi-value">{{ total_certificados }}</div>
+            <div class="kpi-label">Certificados emitidos (total)</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card calidad">
+            <div class="kpi-value">{{ certificados_mes_actual }}</div>
+            <div class="kpi-label">Certificados este mes</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card calidad">
+            <div class="kpi-value">{{ total_aprobados }}</div>
+            <div class="kpi-label">Aprobados pendientes de despacho</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card calidad">
+            <div class="kpi-value">{{ total_despachados }}</div>
+            <div class="kpi-label">Despachados al cliente</div>
+        </div>
+    </div>
+</div>
+<div class="row g-3 mb-4">
+    <div class="col-lg-8">
+        <div class="chart-card">
+            <h3><i class="bi bi-bar-chart-line"></i> Certificados por mes (últimos 12 meses)</h3>
+            <div class="chart-wrap"><canvas id="chartCertificadosMes"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="chart-card">
+            <h3><i class="bi bi-pie-chart"></i> Certificados por estado</h3>
+            <div class="chart-wrap"><canvas id="chartCertificadosEstado"></canvas></div>
+        </div>
+    </div>
+</div>
+
+{# INSPECCIONES KPIs #}
+<div class="section-title"><i class="bi bi-clipboard-check"></i> Laboratorio - Inspecciones</div>
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card inspecciones">
+            <div class="kpi-value">{{ total_insp }}</div>
+            <div class="kpi-label">Total de inspecciones</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card inspecciones">
+            <div class="kpi-value">{{ cumplen }}</div>
+            <div class="kpi-label">Cumplen especificaciones</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card inspecciones">
+            <div class="kpi-value">{{ no_cumplen }}</div>
+            <div class="kpi-label">No cumplen especificaciones</div>
+        </div>
+    </div>
+    <div class="col-md-3 col-sm-6">
+        <div class="kpi-card inspecciones">
+            <div class="kpi-value">{{ tasa }}%</div>
+            <div class="kpi-label">Tasa de cumplimiento</div>
+        </div>
+    </div>
+</div>
+
+{# PARÁMETROS KPIs #}
+<div class="section-title"><i class="bi bi-sliders"></i> Parámetros - Tasa de Cumplimiento</div>
+<div class="row g-3 mb-4">
+    <div class="col-12">
+        <div class="chart-card">
+            <h3><i class="bi bi-bar-chart-line"></i> Parámetros por tasa de cumplimiento (ordenados de menor a mayor)</h3>
+            <div class="chart-wrap"><canvas id="chartParamTasa"></canvas></div>
+        </div>
+    </div>
+</div>
+
+{# Top Clients #}
+<div class="row g-3 mb-4">
+    <div class="col-lg-6">
+        <div class="chart-card">
+            <h3><i class="bi bi-people"></i> Top 5 clientes (por certificados)</h3>
             <div class="chart-wrap"><canvas id="chartClientes"></canvas></div>
         </div>
     </div>
 </div>
 
-{{ meses_labels|json_script:"meses-labels" }}
-{{ meses_data|json_script:"meses-data" }}
-{{ estado_labels|json_script:"estado-labels" }}
-{{ estado_data|json_script:"estado-data" }}
+{# JSON Data #}
+{{ ventas_mes_labels|json_script:"ventas-meses-labels" }}
+{{ ventas_mes_data|json_script:"ventas-meses-data" }}
+{{ venta_estado_labels|json_script:"venta-estado-labels" }}
+{{ venta_estado_data|json_script:"venta-estado-data" }}
 {{ ped_labels|json_script:"ped-labels" }}
 {{ ped_data|json_script:"ped-data" }}
+{{ producto_labels|json_script:"producto-labels" }}
+{{ producto_data|json_script:"producto-data" }}
+{{ meses_labels|json_script:"cert-meses-labels" }}
+{{ meses_data|json_script:"cert-meses-data" }}
+{{ estado_labels|json_script:"cert-estado-labels" }}
+{{ estado_data|json_script:"cert-estado-data" }}
 {{ clientes_labels|json_script:"clientes-labels" }}
 {{ clientes_data|json_script:"clientes-data" }}
+{{ param_tasa_labels|json_script:"param-tasa-labels" }}
+{{ param_tasa_data|json_script:"param-tasa-data" }}
 
 <script>
 (function() {
     const navy = '#1a2a5e';
     const palette = ['#1a2a5e', '#2d3f7a', '#4f64a8', '#1d7a43', '#a02525', '#8a6112', '#6c757d'];
+    const green = '#198754';
+    const blue = '#0d6efd';
     const readJSON = id => JSON.parse(document.getElementById(id).textContent);
 
-    new Chart(document.getElementById('chartMeses'), {
+    // Ventas por mes
+    new Chart(document.getElementById('chartVentasMes'), {
         type: 'bar',
         data: {
-            labels: readJSON('meses-labels'),
-            datasets: [{ label: 'Certificados', data: readJSON('meses-data'), backgroundColor: navy, borderRadius: 6 }]
+            labels: readJSON('ventas-meses-labels'),
+            datasets: [{ label: 'Ventas', data: readJSON('ventas-meses-data'), backgroundColor: green, borderRadius: 6 }]
         },
         options: {
             maintainAspectRatio: false,
@@ -115,18 +242,57 @@
         }
     });
 
-    new Chart(document.getElementById('chartEstado'), {
+    // Ventas por estado
+    new Chart(document.getElementById('chartVentasEstado'), {
         type: 'doughnut',
-        data: { labels: readJSON('estado-labels'), datasets: [{ data: readJSON('estado-data'), backgroundColor: palette }] },
+        data: { labels: readJSON('venta-estado-labels'), datasets: [{ data: readJSON('venta-estado-data'), backgroundColor: palette }] },
         options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
     });
 
+    // Pedidos por estado
     new Chart(document.getElementById('chartPedidos'), {
         type: 'doughnut',
         data: { labels: readJSON('ped-labels'), datasets: [{ data: readJSON('ped-data'), backgroundColor: palette }] },
         options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
     });
 
+    // Top productos
+    new Chart(document.getElementById('chartProductos'), {
+        type: 'bar',
+        data: {
+            labels: readJSON('producto-labels'),
+            datasets: [{ label: 'Pedidos', data: readJSON('producto-data'), backgroundColor: blue, borderRadius: 6 }]
+        },
+        options: {
+            indexAxis: 'y',
+            maintainAspectRatio: false,
+            scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Certificados por mes
+    new Chart(document.getElementById('chartCertificadosMes'), {
+        type: 'bar',
+        data: {
+            labels: readJSON('cert-meses-labels'),
+            datasets: [{ label: 'Certificados', data: readJSON('cert-meses-data'), backgroundColor: navy, borderRadius: 6 }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Certificados por estado
+    new Chart(document.getElementById('chartCertificadosEstado'), {
+        type: 'doughnut',
+        data: { labels: readJSON('cert-estado-labels'), datasets: [{ data: readJSON('cert-estado-data'), backgroundColor: palette }] },
+        options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    // Top clientes
     new Chart(document.getElementById('chartClientes'), {
         type: 'bar',
         data: {
@@ -137,6 +303,28 @@
             indexAxis: 'y',
             maintainAspectRatio: false,
             scales: { x: { beginAtZero: true, ticks: { precision: 0 } } },
+            plugins: { legend: { display: false } }
+        }
+    });
+
+    // Parámetros por tasa de cumplimiento
+    const paramTasaData = readJSON('param-tasa-data');
+    new Chart(document.getElementById('chartParamTasa'), {
+        type: 'bar',
+        data: {
+            labels: readJSON('param-tasa-labels'),
+            datasets: [{
+                label: 'Tasa de cumplimiento (%)',
+                data: paramTasaData,
+                backgroundColor: paramTasaData.map(v => v < 80 ? '#dc3545' : v < 95 ? '#fd7e14' : '#1d7a43'),
+                borderRadius: 6
+            }]
+        },
+        options: {
+            maintainAspectRatio: false,
+            scales: {
+                y: { beginAtZero: true, max: 100, ticks: { callback: v => v + '%' } }
+            },
             plugins: { legend: { display: false } }
         }
     });

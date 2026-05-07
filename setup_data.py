@@ -83,8 +83,8 @@ if not Equipo.objects.filter(tipo='farinografo').exists():
     )
     print("Farinógrafo equipo created.")
 
-alveografo = Equipo.objects.get(tipo='alveografo')
-farinografo = Equipo.objects.get(tipo='farinografo')
+alveografo = Equipo.objects.filter(tipo='alveografo').first()
+farinografo = Equipo.objects.filter(tipo='farinografo').first()
 
 # Create Global Parametros (not tied to specific equipment)
 if not Parametro.objects.filter(nombre='Humedad').exists():
@@ -344,26 +344,35 @@ if not Cliente.objects.exists():
     )
     print("Sample cliente created.")
 else:
-    print("Cliente already exists, skipping creation.")
+    cliente = Cliente.objects.first()
+    print("Cliente already exists: {}".format(cliente.nombre))
 
-# Create complete certificate entry for testing
-from certificados.models import Pedido, Lote, Inspeccion, Resultado, Certificado
+# Create complete flow: Venta -> Pedido -> Lote -> Inspeccion with all resultados
+from certificados.models import Pedido, Lote, Inspeccion, Resultado, Venta
 from datetime import timedelta
 from django.utils import timezone
 
-if not Certificado.objects.exists():
+# Check if we already have this complete flow
+if not Inspeccion.objects.exists():
     cliente = Cliente.objects.first()
     producto = Producto.objects.first()
-    
-    # Create Pedido
-    pedido = Pedido.objects.create(
+
+    # Create Venta
+    venta = Venta.objects.create(
         cliente=cliente,
         producto=producto,
         cantidad=Decimal('28000.00'),
-        estado='aceptado'
+        estado='aceptado',
+        fecha_venta=timezone.now()
     )
-    print("Sample pedido created.")
-    
+    print("Sample venta created: {}".format(venta.orden))
+
+    # Get the auto-created Pedido from Venta.save()
+    pedido = Pedido.objects.get(venta=venta)
+    pedido.estado = 'aceptado'
+    pedido.save()
+    print("Sample pedido created (from venta): {}".format(pedido.id))
+
     # Create Lote
     lote = Lote.objects.create(
         pedido=pedido,
@@ -373,16 +382,16 @@ if not Certificado.objects.exists():
         fecha_produccion=timezone.now().date() - timedelta(days=2),
         fecha_caducidad=timezone.now().date() + timedelta(days=180)
     )
-    print("Sample lote created.")
-    
+    print("Sample lote created: {}".format(lote.codigo_lote))
+
     # Create Inspeccion
     inspeccion = Inspeccion.objects.create(
         lote=lote,
         clave='A-00001',
         cumple_param=True
     )
-    print("Sample inspeccion created.")
-    
+    print("Sample inspeccion created: {}".format(inspeccion.clave))
+
     # Create Resultados for global parameters
     parametros = Parametro.objects.filter(equipo__isnull=True)
     for res_param in parametros:
@@ -441,7 +450,7 @@ if not Certificado.objects.exists():
                 valor_obtenido=Decimal('98.50')
             )
     print("Global parametros resultados created.")
-    
+
     # Create Resultados for alveograma parameters
     param_alveografo = Parametro.objects.filter(equipo__tipo='alveografo')
     for res_param in param_alveografo:
@@ -476,7 +485,7 @@ if not Certificado.objects.exists():
                 valor_obtenido=Decimal('65.00')
             )
     print("Alveograma parametros resultados created.")
-    
+
     # Create Resultados for farinograma parameters
     param_farinografo = Parametro.objects.filter(equipo__tipo='farinografo')
     for res_param in param_farinografo:
@@ -505,22 +514,12 @@ if not Certificado.objects.exists():
                 valor_obtenido=Decimal('40.00')
             )
     print("Farinograma parametros resultados created.")
-    
-    # Create Certificado
-    calidad_user = Usuario.objects.get(correo='calidad@test.com')
-    certificado = Certificado.objects.create(
-        inspeccion=inspeccion,
-        pedido=pedido,
-        estado='aprobado',
-        aprobado_por=calidad_user,
-        fecha_aprobacion=timezone.now(),
-        fecha_caducidad=timezone.now().date() + timedelta(days=180),
-        numero_factura='FC-A-00045892',
-        cantidad_total_entrega=Decimal('28000.00'),
-        fecha_envio=timezone.now()
-    )
-    print("Sample certificado created.")
+
+    print("Complete flow created: Venta -> Pedido -> Lote -> Inspeccion with all parameters")
+    print("Certificate creation is now available for the user.")
 else:
-    print("Certificado already exists, skipping creation.")
+    inspeccion = Inspeccion.objects.first()
+    print("Inspeccion already exists: {}".format(inspeccion.clave))
+    print("Skipping complete flow creation.")
 
 print("Setup completed successfully!")
