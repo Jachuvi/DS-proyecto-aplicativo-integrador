@@ -542,6 +542,7 @@ class LoteCreateView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     def get_form(self, form_class=None):
         form = super().get_form(form_class)
         from django import forms
+        form.fields['producto'].queryset = Producto.objects.filter(activo=True)
         form.fields['fecha_caducidad'].widget = forms.DateInput(attrs={'type': 'date', 'class': 'form-control'})
         form.fields['producto'].widget = forms.Select(attrs={'class': 'form-select'})
         form.fields['cantidad'].widget = forms.NumberInput(attrs={'class': 'form-control', 'step': '0.01'})
@@ -1161,7 +1162,7 @@ class IniciarInspeccionFromLoteView(LoginRequiredMixin, RoleRequiredMixin, View)
         
         count = Inspeccion.objects.filter(lote=lote).count()
         letra = string.ascii_uppercase[count] if count < 26 else "Z"
-        lote_id_short = lote.folio.replace("L-", "") if lote.folio else str(lote.id)
+        lote_id_short = lote.codigo_lote.replace("L-", "") if lote.codigo_lote else str(lote.id)
         inspeccion_clave = f"{letra}-{lote_id_short}"
         
         return render(request, "certificados/iniciar_inspeccion.html", {
@@ -1328,7 +1329,7 @@ class DescargarCertificadoPDFView(LoginRequiredMixin, RoleRequiredMixin, View):
 
         buffer.seek(0)
         response = HttpResponse(buffer.read(), content_type="application/pdf")
-        response["Content-Disposition"] = f'attachment; filename="certificado_{certificado.folio}.pdf"'
+        response["Content-Disposition"] = f'attachment; filename="certificado_{certificado.id}.pdf"'
         return response
 
 

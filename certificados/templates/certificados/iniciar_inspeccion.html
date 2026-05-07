@@ -6,64 +6,90 @@
 {% block content %}
 <div class="card mb-3">
     <div class="card-body p-4">
-        <h2 class="card-title mb-3">Pedido #{{ pedido.id }}</h2>
+        <h2 class="card-title mb-3">Lote: {{ lote.codigo_lote }}</h2>
         <div class="row">
-            <div class="col-md-6"><strong>Producto:</strong> {{ pedido.producto }}</div>
-            <div class="col-md-6"><strong>Cliente:</strong> {{ pedido.cliente }}</div>
-            <div class="col-md-6 mt-2"><strong>Cantidad:</strong> {{ pedido.cantidad }}</div>
-            <div class="col-md-6 mt-2"><strong>Fecha:</strong> {{ pedido.fecha_pedido|date:"d/m/Y H:i" }}</div>
+            <div class="col-md-4"><strong>Producto:</strong> {{ lote.producto }}</div>
+            <div class="col-md-4"><strong>Cantidad:</strong> {{ lote.cantidad }} kg</div>
+            <div class="col-md-4"><strong>Cliente:</strong> {% if lote.pedido %}{{ lote.pedido.cliente.nombre }}{% else %}—{% endif %}</div>
+            <div class="col-md-4 mt-2"><strong>Fecha Producción:</strong> {% if lote.fecha_produccion %}{{ lote.fecha_produccion|date:"d/m/Y" }}{% else %}—{% endif %}</div>
+            <div class="col-md-4 mt-2"><strong>Fecha Caducidad:</strong> {% if lote.fecha_caducidad %}{{ lote.fecha_caducidad|date:"d/m/Y" }}{% else %}—{% endif %}</div>
         </div>
-
-        {% if lotes_existentes %}
-        <hr class="my-3">
-        <p class="mb-2"><strong>Lotes ya generados para este pedido:</strong></p>
-        <div class="d-flex flex-wrap gap-2">
-            {% for l in lotes_existentes %}
-            <span class="badge bg-secondary">{{ l.codigo_lote }}{{ l.secuencia }}</span>
-            {% endfor %}
-        </div>
-        {% endif %}
     </div>
 </div>
 
 <div class="card">
     <div class="card-body p-4">
-        <h2 class="card-title mb-2">Datos del Lote</h2>
-        {% if secuencia_sugerida %}
-        <p class="text-muted small mb-4">
-            <i class="bi bi-info-circle"></i>
-            Secuencia siguiente sugerida para este pedido:
-            <strong class="text-dark">{{ secuencia_sugerida }}</strong>
-            (puedes editarla si requieres otro valor A–Z).
-        </p>
-        {% else %}
-        <div class="alert alert-warning small">
-            <i class="bi bi-exclamation-triangle"></i>
-            Este pedido ya alcanzó las 26 secuencias (A–Z). No se puede crear otro lote.
-        </div>
-        {% endif %}
-        <form method="post">
+        <h2 class="card-title mb-4">Nueva Inspección</h2>
+        
+        <form method="post" id="inspeccionForm">
             {% csrf_token %}
-            {% for field in form %}
-            <div class="mb-3">
-                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
-                {{ field }}
-                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
-            </div>
-            {% endfor %}
-
-            <div class="mb-3">
+            
+            <div class="mb-4">
                 <label for="equipo" class="form-label">Equipo de laboratorio</label>
-                <select name="equipo" id="equipo" class="form-select" required>
+                <select name="equipo" id="equipo" class="form-select" required onchange="toggleParametros()">
                     <option value="">Seleccione un equipo...</option>
                     {% for equipo in equipos %}
-                    <option value="{{ equipo.id }}">{{ equipo.get_tipo_display }} — {{ equipo.serie }}</option>
+                    <option value="{{ equipo.id }}" data-tipo="{{ equipo.tipo }}">{{ equipo.get_tipo_display }} — {{ equipo.serie }}</option>
                     {% endfor %}
                 </select>
+                {% if error %}<div class="text-danger small mt-1">{{ error }}</div>{% endif %}
+            </div>
+
+            <div id="parametrosSection" style="display:none;">
+                {# Parámetros globales #}
+                <div class="mb-4">
+                    <h4 class="mb-3">Parámetros Generales</h4>
+                    <div class="row">
+                        {% for p in parametros_global %}
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">{{ p.nombre }}</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" class="form-control" name="param_{{ p.id }}" placeholder="0.00">
+                                <span class="input-group-text">{{ p.unidad }}</span>
+                            </div>
+                            <small class="text-muted">Ref: {{ p.ref_min|floatformat }} – {{ p.ref_max|floatformat }} {{ p.unidad }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {# Parámetros de Alveógrafo #}
+                <div class="mb-4 param-grupo" data-tipo="alveografo" style="display:none;">
+                    <h4 class="mb-3">Parámetros de Alveógrafo</h4>
+                    <div class="row">
+                        {% for p in parametros_alveograma %}
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">{{ p.nombre }}</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" class="form-control" name="param_{{ p.id }}" placeholder="0.00">
+                                <span class="input-group-text">{{ p.unidad }}</span>
+                            </div>
+                            <small class="text-muted">Ref: {{ p.ref_min|floatformat }} – {{ p.ref_max|floatformat }} {{ p.unidad }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                {# Parámetros de Farinógrafo #}
+                <div class="mb-4 param-grupo" data-tipo="farinografo" style="display:none;">
+                    <h4 class="mb-3">Parámetros de Farinógrafo</h4>
+                    <div class="row">
+                        {% for p in parametros_farinograma %}
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">{{ p.nombre }}</label>
+                            <div class="input-group">
+                                <input type="number" step="0.01" class="form-control" name="param_{{ p.id }}" placeholder="0.00">
+                                <span class="input-group-text">{{ p.unidad }}</span>
+                            </div>
+                            <small class="text-muted">Ref: {{ p.ref_min|floatformat }} – {{ p.ref_max|floatformat }} {{ p.unidad }}</small>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
             </div>
 
             <div class="d-flex gap-2 mt-4">
-                <button type="submit" class="btn-brand">Iniciar Inspección</button>
+                <button type="submit" class="btn-brand">Guardar Inspección</button>
                 <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="btn-brand-outline">Cancelar</a>
             </div>
         </form>
@@ -71,10 +97,21 @@
 </div>
 
 <script>
-    document.querySelectorAll('form input, form select, form textarea').forEach(el => {
-        if (el.tagName === 'SELECT' && !el.classList.contains('form-select')) el.classList.add('form-select');
-        else if (el.tagName === 'INPUT' && el.type !== 'checkbox' && el.type !== 'radio' && el.type !== 'hidden' && el.type !== 'submit')
-            el.classList.add('form-control');
+function toggleParametros() {
+    const equipoSelect = document.getElementById('equipo');
+    const selectedOption = equipoSelect.options[equipoSelect.selectedIndex];
+    const tipoEquipo = selectedOption.getAttribute('data-tipo');
+    
+    document.getElementById('parametrosSection').style.display = 'block';
+    
+    document.querySelectorAll('.param-grupo').forEach(div => {
+        if (div.getAttribute('data-tipo') === tipoEquipo) {
+            div.style.display = 'block';
+        } else {
+            div.style.display = 'none';
+            div.querySelectorAll('input').forEach(input => input.value = '');
+        }
     });
+}
 </script>
 {% endblock %}

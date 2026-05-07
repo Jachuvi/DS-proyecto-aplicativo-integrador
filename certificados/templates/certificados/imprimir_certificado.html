@@ -2,64 +2,27 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Certificado de Calidad - {{ certificado.folio }}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; font-size: 11pt; line-height: 1.4; color: #000; }
-        .container { width: 100%; max-width: 800px; margin: 0 auto; padding: 20px; }
-        
-        .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 15px; margin-bottom: 20px; }
-        .header h1 { font-size: 18pt; text-transform: uppercase; margin-bottom: 5px; }
-        .header .folio { font-size: 14pt; font-weight: bold; }
-        
-        .section { margin-bottom: 20px; }
-        .section-title { font-size: 10pt; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #ccc; padding-bottom: 5px; margin-bottom: 10px; }
-        
-        .two-col { display: flex; justify-content: space-between; }
-        .two-col .col { width: 48%; }
-        
-        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-        th, td { border: 1px solid #000; padding: 5px 8px; text-align: left; font-size: 9pt; }
-        th { background: #f0f0f0; font-weight: bold; }
-        .text-center { text-align: center; }
-        .text-right { text-align: right; }
-        
-        .badge-pass { background: #d4edda; color: #155724; padding: 2px 6px; }
-        .badge-fail { background: #f8d7da; color: #721c24; padding: 2px 6px; }
-        
-        .footer { margin-top: 30px; padding-top: 15px; border-top: 1px solid #000; font-size: 9pt; }
-        .firma { margin-top: 40px; display: flex; justify-content: space-between; }
-        .firma .firma-box { width: 45%; text-align: center; }
-        .firma .linea { border-top: 1px solid #000; margin-top: 30px; padding-top: 5px; }
-        
-        {% if pdf_mode %}
-        @page { size: A4; margin: 1.5cm; }
-        .container { width: 100%; }
-        {% endif %}
-    </style>
-</head>
-<body>
-    <div class="container">
+<title>Certificado de Calidad - {{ certificado.folio }}</title>
+        <style>
+            body { font-family: Arial, sans-serif; }
+            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+            .header .folio { font-size: 14pt; font-weight: bold; }
+            table { width: 100%; border-collapse: collapse; }
+            th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
+            th { background: #f5f5f5; }
+        </style>
+    </head>
+    <body>
         <div class="header">
-            <h1>Certificado de Calidad</h1>
+            <div>
+                <h1>Harinas Elizondo</h1>
+                <p>Certificado de Calidad</p>
+            </div>
             <div class="folio">{{ certificado.folio }}</div>
         </div>
         
-        <div class="two-col section">
-            <div class="col">
-                <div class="section-title">Información del Lote</div>
-                <table>
-                    <tr><th>Número de Lote</th><td>{{ certificado.inspeccion.lote.folio }}</td></tr>
-                    <tr><th>Producto</th><td>{{ certificado.inspeccion.lote.producto.nombre|default:"-" }}</td></tr>
-                    <tr><th>Cantidad</th><td>{{ certificado.inspeccion.lote.cantidad }}</td></tr>
-                    <tr><th>Fecha de Producción</th><td>{{ certificado.inspeccion.lote.fecha|date:"d/m/Y" }}</td></tr>
-                    <tr><th>Fecha de Caducidad</th><td>{{ certificado.fecha_caducidad|date:"d/m/Y"|default:"—" }}</td></tr>
-                </table>
-            </div>
-            <div class="col">
-                <div class="section-title">Información del Pedido</div>
-                <table>
-                    <tr><th>Número de Orden</th><td>{{ certificado.pedido.folio }}</td></tr>
+        <table>
+            <tr><th>Número de Orden</th><td>#{{ certificado.pedido.id }}</td></tr>
                     <tr><th>Cliente</th><td>{{ certificado.pedido.cliente.nombre }}</td></tr>
                     <tr><th>RFC</th><td>{{ certificado.pedido.cliente.rfc }}</td></tr>
                     <tr><th>Cantidad Solicitada</th><td>{{ certificado.pedido.cantidad }}</td></tr>
