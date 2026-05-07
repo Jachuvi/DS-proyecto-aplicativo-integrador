@@ -26,7 +26,6 @@ class ClienteForm(forms.ModelForm):
             "contacto",
             "correo_contacto",
             "requiere_certificado",
-            "clave_doc_especificaciones",
         ]
         widgets = {
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
@@ -38,7 +37,7 @@ class ClienteForm(forms.ModelForm):
             "direccion_fiscal_codigo_postal": forms.TextInput(attrs={"class": "form-control", "placeholder": "CP", "maxlength": "5"}),
             "direccion_fiscal_ciudad": forms.TextInput(attrs={"class": "form-control", "placeholder": "Ciudad"}),
             "direccion_fiscal_estado": forms.TextInput(attrs={"class": "form-control", "placeholder": "Estado"}),
-            "direccion_entrega_misma": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+            "direccion_entrega_misma": forms.CheckboxInput(attrs={"class": "form-check-input", "onchange": "toggleEntrega()"}),
             "direccion_entrega_calle": forms.TextInput(attrs={"class": "form-control", "placeholder": "Calle"}),
             "direccion_entrega_numero": forms.TextInput(attrs={"class": "form-control", "placeholder": "Número"}),
             "direccion_entrega_interior": forms.TextInput(attrs={"class": "form-control", "placeholder": "Interior (opcional)"}),
@@ -49,6 +48,5 @@ class ClienteForm(forms.ModelForm):
             "contacto": forms.TextInput(attrs={"class": "form-control"}),
             "correo_contacto": forms.EmailInput(attrs={"class": "form-control"}),
             "requiere_certificado": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-            "clave_doc_especificaciones": forms.TextInput(attrs={"class": "form-control"}),
         }
 

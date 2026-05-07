@@ -1,6 +1,21 @@
 {% extends "certificados/admin/_catalogo_form.html" %}
 {% block extra_head %}
 <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async" async defer></script>
+<script>
+function initAutocomplete() {
+    const addressInput = document.querySelector('[name="direccion_fiscal"]');
+    if (addressInput) {
+        new google.maps.places.Autocomplete(addressInput);
+    }
+    
+    const entregaInput = document.querySelector('[name="direccion_entrega"]');
+    if (entregaInput) {
+        new google.maps.places.Autocomplete(entregaInput);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initAutocomplete);
+</script>
 {% endblock %}
 {% block content %}
 <div class="card">
@@ -9,7 +24,7 @@
         <form method="post">
             {% csrf_token %}
             {% for field in form %}
-            {% if field.name == 'calle' %}
+            {% if field.name == 'direccion_fiscal_calle' %}
             <fieldset class="mb-4 border p-3 rounded">
                 <legend class="h6 mb-3 text-primary">Dirección fiscal</legend>
                 <div class="mb-3">
@@ -17,13 +32,58 @@
                     <div id="address-autocomplete-container"></div>
                 </div>
             {% endif %}
+            {% if field.name in 'direccion_fiscal_calle,direccion_fiscal_numero,direccion_fiscal_interior,direccion_fiscal_colonia,direccion_fiscal_codigo_postal,direccion_fiscal_ciudad,direccion_fiscal_estado' %}
             <div class="mb-3">
-                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                <label for="{{ field.id_for_label }}" class="form-label">
+                    {% if field.name == 'direccion_fiscal_calle' %}Calle
+                    {% elif field.name == 'direccion_fiscal_numero' %}Número
+                    {% elif field.name == 'direccion_fiscal_interior' %}Interior
+                    {% elif field.name == 'direccion_fiscal_colonia' %}Colonia
+                    {% elif field.name == 'direccion_fiscal_codigo_postal' %}Código Postal
+                    {% elif field.name == 'direccion_fiscal_ciudad' %}Ciudad
+                    {% elif field.name == 'direccion_fiscal_estado' %}Estado
+                    {% endif %}
+                </label>
                 {{ field }}
                 {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
                 {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
             </div>
-            {% if field.name == 'estado' %}
+            {% endif %}
+            {% if field.name == 'direccion_fiscal_estado' %}
+            </fieldset>
+            {% endif %}
+            {% if field.name == 'direccion_entrega_misma' %}
+            <fieldset class="mb-4 border p-3 rounded" id="entrega_fieldset">
+                <legend class="h6 mb-3 text-primary">Dirección de entrega</legend>
+                <div class="form-check mb-3">
+                    {{ field }}
+                    <label for="{{ field.id_for_label }}" class="form-check-label ms-2">{{ field.help_text|default:"Usar la misma dirección fiscal para entrega" }}</label>
+                </div>
+                <div id="direccion_entrega_inputs" style="display: none;">
+                    <div class="mb-3">
+                        <label class="form-label">Buscar dirección</label>
+                        <div id="address-autocomplete-entrega-container"></div>
+                    </div>
+            {% endif %}
+            {% if field.name in 'direccion_entrega_calle,direccion_entrega_numero,direccion_entrega_interior,direccion_entrega_colonia,direccion_entrega_codigo_postal,direccion_entrega_ciudad,direccion_entrega_estado' %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">
+                    {% if field.name == 'direccion_entrega_calle' %}Calle
+                    {% elif field.name == 'direccion_entrega_numero' %}Número
+                    {% elif field.name == 'direccion_entrega_interior' %}Interior
+                    {% elif field.name == 'direccion_entrega_colonia' %}Colonia
+                    {% elif field.name == 'direccion_entrega_codigo_postal' %}Código Postal
+                    {% elif field.name == 'direccion_entrega_ciudad' %}Ciudad
+                    {% elif field.name == 'direccion_entrega_estado' %}Estado
+                    {% endif %}
+                </label>
+                {{ field }}
+                {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+            </div>
+            {% endif %}
+            {% if field.name == 'direccion_entrega_estado' %}
+                </div>
             </fieldset>
             {% endif %}
             {% endfor %}
@@ -36,6 +96,22 @@
 </div>
 
 <script>
+function toggleEntrega() {
+    const checkbox = document.querySelector('[name="direccion_entrega_misma"]');
+    const entregaDiv = document.getElementById('direccion_entrega_inputs');
+    if (entregaDiv) {
+        entregaDiv.style.display = checkbox.checked ? 'none' : 'block';
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    toggleEntrega();
+    
+    const checkbox = document.querySelector('[name="direccion_entrega_misma"]');
+    if (checkbox) {
+        checkbox.addEventListener('change', toggleEntrega);
+    }
+});
 
 async function initAddressAutocomplete() {
     if (!window.google) {
@@ -45,51 +121,60 @@ async function initAddressAutocomplete() {
 
     await google.maps.importLibrary('places');
 
+    // Fiscal address autocomplete
     const placeAutocomplete = new google.maps.places.PlaceAutocompleteElement({
         includedRegionCodes: ['mx']
     });
-
-
-
     placeAutocomplete.className = 'form-control';
-
-
     document.getElementById('address-autocomplete-container').appendChild(placeAutocomplete);
 
     placeAutocomplete.addEventListener('gmp-select', async (event) => {
-        const placePrediction = event.placePrediction;
-        const place = placePrediction.toPlace();
+        fillAddressFields(event, 'direccion_fiscal');
+    });
 
-        await place.fetchFields({
-            fields: ['addressComponents']
-        });
+    // Delivery address autocomplete
+    const placeAutocompleteEntrega = new google.maps.places.PlaceAutocompleteElement({
+        includedRegionCodes: ['mx']
+    });
+    placeAutocompleteEntrega.className = 'form-control';
+    document.getElementById('address-autocomplete-entrega-container').appendChild(placeAutocompleteEntrega);
 
-        const components = {
-            street_number: 'numero_exterior',
-            route: 'calle',
-            sublocality: 'colonia',
-            neighborhood: 'colonia',
-            locality: 'ciudad',
-            administrative_area_level_1: 'estado',
-            postal_code: 'codigo_postal'
-        };
+    placeAutocompleteEntrega.addEventListener('gmp-select', async (event) => {
+        fillAddressFields(event, 'direccion_entrega');
+    });
+}
 
-        place.addressComponents.forEach((component) => {
-                      console.log(component)
-            component.types.forEach((type) => {
-                const fieldName = components[type];
-                if (fieldName) {
-                    const field = document.querySelector(`[name="${fieldName}"]`);
-                    if (field) {
-                      console.log(field)
-                        field.value = component.longText;
-                    }
+async function fillAddressFields(event, prefix) {
+    const placePrediction = event.placePrediction;
+    const place = placePrediction.toPlace();
+
+    await place.fetchFields({
+        fields: ['addressComponents']
+    });
+
+    const components = {
+        street_number: `${prefix}_numero`,
+        route: `${prefix}_calle`,
+        sublocality: `${prefix}_colonia`,
+        neighborhood: `${prefix}_colonia`,
+        locality: `${prefix}_ciudad`,
+        administrative_area_level_1: `${prefix}_estado`,
+        postal_code: `${prefix}_codigo_postal`
+    };
+
+    place.addressComponents.forEach((component) => {
+        component.types.forEach((type) => {
+            const fieldName = components[type];
+            if (fieldName) {
+                const field = document.querySelector(`[name="${fieldName}"]`);
+                if (field) {
+                    field.value = component.longText;
                 }
-                if (type === 'street_number') {
-                    const numField = document.querySelector('[name="numero_exterior"]');
-                    if (numField) numField.value = component.shortText;
-                }
-            });
+            }
+            if (type === 'street_number') {
+                const numField = document.querySelector(`[name="${prefix}_numero"]`);
+                if (numField) numField.value = component.shortText;
+            }
         });
     });
 }
@@ -99,6 +184,5 @@ if (document.readyState === 'loading') {
 } else {
     initAddressAutocomplete();
 }
-
 </script>
 {% endblock %}
