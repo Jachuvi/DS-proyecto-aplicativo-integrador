@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Registrar Venta{% endblock %}
+{% block page_title %}Registrar Venta{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <h2 class="card-title mb-1">Nueva Venta</h2>
+        <p class="text-muted mb-4">Captura los datos de la venta. Se generará automáticamente una orden de venta y un pedido vinculado.</p>
+        <form method="post">
+            {% csrf_token %}
+            <div class="mb-3">
+                <label for="{{ form.cliente.id_for_label }}" class="form-label">Cliente</label>
+                {{ form.cliente }}
+                {% if form.cliente.errors %}<div class="text-danger small mt-1">{{ form.cliente.errors|join:" " }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+                <label for="{{ form.producto.id_for_label }}" class="form-label">Producto</label>
+                {{ form.producto }}
+                {% if form.producto.errors %}<div class="text-danger small mt-1">{{ form.producto.errors|join:" " }}</div>{% endif %}
+            </div>
+            <div class="mb-3">
+                <label for="{{ form.cantidad.id_for_label }}" class="form-label">Cantidad (kg)</label>
+                {{ form.cantidad }}
+                {% if form.cantidad.errors %}<div class="text-danger small mt-1">{{ form.cantidad.errors|join:" " }}</div>{% endif %}
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn-brand">Guardar Venta</button>
+                <a href="{% url 'home' %}" class="btn-brand-outline">Cancelar</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

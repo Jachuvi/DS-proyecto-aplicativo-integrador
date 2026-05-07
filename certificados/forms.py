@@ -1,5 +1,5 @@
 from django import forms
-from .models import Cliente
+from .models import Cliente, Producto, Venta
 
 
 class ClienteForm(forms.ModelForm):
@@ -93,3 +93,14 @@ class ClienteForm(forms.ModelForm):
         if correo and not correo.endswith((".com", ".mx", ".org")):
             raise forms.ValidationError("Invalid email domain.")
         return correo
+
+
+class VentaForm(forms.ModelForm):
+    class Meta:
+        model = Venta
+        fields = ["cliente", "producto", "cantidad"]
+        widgets = {
+            "cliente": forms.Select(attrs={"class": "form-select select2", "data-placeholder": "Seleccione un cliente..."}),
+            "producto": forms.Select(attrs={"class": "form-select select2", "data-placeholder": "Seleccione un producto..."}),
+            "cantidad": forms.NumberInput(attrs={"class": "form-control", "step": "0.01", "placeholder": "Cantidad en kg"}),
+        }

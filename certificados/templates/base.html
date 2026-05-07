@@ -8,6 +8,7 @@
     <link rel="icon" type="image/webp" href="{% static 'img/logo.webp' %}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <style>
         :root {
             --brand-navy: #1a2a5e;
@@ -250,8 +251,8 @@
 
             {% if user.rol == 'ventas' or user.rol == 'admin' %}
             <div class="nav-section">Ventas</div>
-            <a href="{% url 'registro_pedido' %}" class="{% if request.resolver_match.url_name == 'registro_pedido' %}active{% endif %}">
-                <i class="bi bi-cart-plus"></i> Registrar Pedido
+            <a href="{% url 'registro_venta' %}" class="{% if request.resolver_match.url_name == 'registro_venta' %}active{% endif %}">
+                <i class="bi bi-cart-plus"></i> Registrar Venta
             </a>
             {% endif %}
 
@@ -352,6 +353,22 @@
         backdrop?.addEventListener('click', () => {
             sidebar.classList.remove('open');
             backdrop.classList.remove('show');
+        });
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            $('.select2').each(function() {
+                if (!$(this).hasClass('select2-hidden-accessible')) {
+                    $(this).select2({
+                        language: 'es',
+                        placeholder: $(this).data('placeholder') || 'Seleccione una opción...',
+                        width: '100%'
+                    });
+                }
+            });
         });
     </script>
 </body>

@@ -21,6 +21,7 @@ import django_filters
 
 from .models import (
     Pedido,
+    Venta,
     Cliente,
     Lote,
     Inspeccion,
@@ -32,7 +33,7 @@ from .models import (
     Producto,
     Usuario,
 )
-from .forms import ClienteForm
+from .forms import ClienteForm, VentaForm
 
 
 # 1x1 transparent PNG used as the email open-tracking pixel
@@ -87,6 +88,24 @@ class RoleRequiredMixin(UserPassesTestMixin):
 # ---------------------------------------------------------------------------
 # Ventas — Registro de pedido
 # ---------------------------------------------------------------------------
+class RegistroVentaView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
+    model = Venta
+    form_class = VentaForm
+    template_name = "certificados/venta_form.html"
+    success_url = reverse_lazy("home")
+    allowed_roles = ["ventas"]
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["productos"] = Producto.objects.filter(activo=True)
+        return ctx
+
+    def form_valid(self, form):
+        form.instance.estado = "pendiente"
+        messages.success(self.request, "Venta registrada correctamente.")
+        return super().form_valid(form)
+
+
 class RegistroDePedidoView(LoginRequiredMixin, RoleRequiredMixin, CreateView):
     model = Pedido
     fields = ["cliente", "producto", "cantidad"]

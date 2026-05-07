@@ -70,6 +70,30 @@
                         <th class="table-light">Cliente:</th>
                         <td colspan="3">{{ certificado.pedido.cliente.nombre|default:"—" }}</td>
                     </tr>
+                    <tr>
+                        <th class="table-light">RFC:</th>
+                        <td colspan="3">{{ certificado.pedido.cliente.rfc|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="table-light">Dirección Fiscal:</th>
+                        <td colspan="3">
+                            {% with cliente=certificado.pedido.cliente %}
+                            {% if cliente.direccion_fiscal_calle %}{{ cliente.direccion_fiscal_calle }}, {{ cliente.direccion_fiscal_numero }}{% if cliente.direccion_fiscal_interior %}/{{ cliente.direccion_fiscal_interior }}{% endif %}, {{ cliente.direccion_fiscal_colonia }}, CP {{ cliente.direccion_fiscal_codigo_postal }}, {{ cliente.direccion_fiscal_ciudad }}, {{ cliente.direccion_fiscal_estado }}{% else %}—{% endif %}
+                            {% endwith %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="table-light">Dirección de Entrega:</th>
+                        <td colspan="3">
+                            {% with cliente=certificado.pedido.cliente %}
+                            {% if cliente.direccion_entrega_misma %}
+                            {% if cliente.direccion_fiscal_calle %}{{ cliente.direccion_fiscal_calle }}, {{ cliente.direccion_fiscal_numero }}{% if cliente.direccion_fiscal_interior %}/{{ cliente.direccion_fiscal_interior }}{% endif %}, {{ cliente.direccion_fiscal_colonia }}, CP {{ cliente.direccion_fiscal_codigo_postal }}, {{ cliente.direccion_fiscal_ciudad }}, {{ cliente.direccion_fiscal_estado }}{% else %}—{% endif %}
+                            {% else %}
+                            {% if cliente.direccion_entrega_calle %}{{ cliente.direccion_entrega_calle }}, {{ cliente.direccion_entrega_numero }}{% if cliente.direccion_entrega_interior %}/{{ cliente.direccion_entrega_interior }}{% endif %}, {{ cliente.direccion_entrega_colonia }}, CP {{ cliente.direccion_entrega_codigo_postal }}, {{ cliente.direccion_entrega_ciudad }}, {{ cliente.direccion_entrega_estado }}{% else %}—{% endif %}
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>

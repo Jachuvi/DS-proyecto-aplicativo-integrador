@@ -346,4 +346,181 @@ if not Cliente.objects.exists():
 else:
     print("Cliente already exists, skipping creation.")
 
+# Create complete certificate entry for testing
+from certificados.models import Pedido, Lote, Inspeccion, Resultado, Certificado
+from datetime import timedelta
+from django.utils import timezone
+
+if not Certificado.objects.exists():
+    cliente = Cliente.objects.first()
+    producto = Producto.objects.first()
+    
+    # Create Pedido
+    pedido = Pedido.objects.create(
+        cliente=cliente,
+        producto=producto,
+        cantidad=Decimal('28000.00'),
+        estado='aceptado'
+    )
+    print("Sample pedido created.")
+    
+    # Create Lote
+    lote = Lote.objects.create(
+        pedido=pedido,
+        codigo_lote='L-00001',
+        producto=producto,
+        cantidad=Decimal('28000.00'),
+        fecha_produccion=timezone.now().date() - timedelta(days=2),
+        fecha_caducidad=timezone.now().date() + timedelta(days=180)
+    )
+    print("Sample lote created.")
+    
+    # Create Inspeccion
+    inspeccion = Inspeccion.objects.create(
+        lote=lote,
+        clave='A-00001',
+        cumple_param=True
+    )
+    print("Sample inspeccion created.")
+    
+    # Create Resultados for global parameters
+    parametros = Parametro.objects.filter(equipo__isnull=True)
+    for res_param in parametros:
+        if res_param.nombre == 'Humedad':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('14.20')
+            )
+        elif res_param.nombre == 'Cenizas':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('0.68')
+            )
+        elif res_param.nombre == 'Gluten húmedo':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('30.50')
+            )
+        elif res_param.nombre == 'Gluten seco':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('10.20')
+            )
+        elif res_param.nombre == 'Índice de Gluten':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('33.44')
+            )
+        elif res_param.nombre == 'Falling Number':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('285')
+            )
+        elif res_param.nombre == 'Almidón dañado':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('18.50')
+            )
+        elif res_param.nombre == 'Color':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('90.00')
+            )
+        elif res_param.nombre == 'Granulometría':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('98.50')
+            )
+    print("Global parametros resultados created.")
+    
+    # Create Resultados for alveograma parameters
+    param_alveografo = Parametro.objects.filter(equipo__tipo='alveografo')
+    for res_param in param_alveografo:
+        if res_param.nombre == 'P (Tenacidad)':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('75.00')
+            )
+        elif res_param.nombre == 'L (Extensibilidad)':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('95.00')
+            )
+        elif res_param.nombre == 'P/L':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('0.79')
+            )
+        elif res_param.nombre == 'W (Fuerza panadera)':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('310')
+            )
+        elif res_param.nombre == 'Ie (Índice de elasticidad)':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('65.00')
+            )
+    print("Alveograma parametros resultados created.")
+    
+    # Create Resultados for farinograma parameters
+    param_farinografo = Parametro.objects.filter(equipo__tipo='farinografo')
+    for res_param in param_farinografo:
+        if res_param.nombre == 'Absorción de agua':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('62.00')
+            )
+        elif res_param.nombre == 'Tiempo de desarrollo':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('3.50')
+            )
+        elif res_param.nombre == 'Estabilidad':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('12.00')
+            )
+        elif res_param.nombre == 'Grado de decaimiento':
+            Resultado.objects.create(
+                inspeccion=inspeccion,
+                parametro=res_param,
+                valor_obtenido=Decimal('40.00')
+            )
+    print("Farinograma parametros resultados created.")
+    
+    # Create Certificado
+    calidad_user = Usuario.objects.get(correo='calidad@test.com')
+    certificado = Certificado.objects.create(
+        inspeccion=inspeccion,
+        pedido=pedido,
+        estado='aprobado',
+        aprobado_por=calidad_user,
+        fecha_aprobacion=timezone.now(),
+        fecha_caducidad=timezone.now().date() + timedelta(days=180),
+        numero_factura='FC-A-00045892',
+        cantidad_total_entrega=Decimal('28000.00'),
+        fecha_envio=timezone.now()
+    )
+    print("Sample certificado created.")
+else:
+    print("Certificado already exists, skipping creation.")
+
 print("Setup completed successfully!")

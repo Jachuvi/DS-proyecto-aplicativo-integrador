@@ -244,6 +244,13 @@ class Pedido(models.Model):
     cantidad = models.DecimalField(max_digits=10, decimal_places=2)
     fecha_pedido = models.DateTimeField(default=timezone.now)
     estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
+    venta = models.ForeignKey(
+        "Venta",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+        related_name="pedidos"
+    )
 
     class Meta:
         indexes = [
@@ -253,6 +260,52 @@ class Pedido(models.Model):
     def __str__(self):
         product_name = self.producto.nombre if self.producto else self.producto
         return f"Pedido {self.id} - {product_name}"
+
+
+class Venta(models.Model):
+    ESTADOS = (
+        ("pendiente", "Pendiente"),
+        ("aceptado", "Aceptado"),
+        ("rechazado", "Rechazado"),
+        ("despachado", "Despachado"),
+    )
+    cliente = models.ForeignKey(Cliente, on_delete=models.CASCADE)
+    producto = models.ForeignKey(
+        Producto, 
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True
+    )
+    cantidad = models.DecimalField(max_digits=10, decimal_places=2)
+    fecha_venta = models.DateTimeField(default=timezone.now)
+    orden = models.CharField(max_length=50, blank=True)
+    estado = models.CharField(max_length=20, choices=ESTADOS, default="pendiente")
+
+    def save(self, *args, **kwargs):
+        if not self.orden:
+            ultimo = Venta.objects.all().order_by("-id").first()
+            if ultimo:
+                try:
+                    last_num = int(ultimo.orden.split("-")[-1])
+                except (ValueError, IndexError):
+                    last_num = 0
+                new_num = last_num + 1
+            else:
+                new_num = 1
+            self.orden = f"V-{timezone.now().strftime('%Y%m%d')}-{new_num:04d}"
+        super().save(*args, **kwargs)
+        
+        if not Pedido.objects.filter(venta=self).exists():
+            Pedido.objects.create(
+                cliente=self.cliente,
+                producto=self.producto,
+                cantidad=self.cantidad,
+                estado=self.estado,
+                venta=self
+            )
+
+    def __str__(self):
+        return f"Venta {self.orden}"
 
 
 class Lote(models.Model):

@@ -145,10 +145,10 @@
 <div class="row g-3">
     {% if user.rol == 'ventas' or user.rol == 'admin' %}
     <div class="col-md-4 col-sm-6">
-        <a href="{% url 'registro_pedido' %}" class="action-card">
+        <a href="{% url 'registro_venta' %}" class="action-card">
             <div class="icon"><i class="bi bi-file-earmark-plus"></i></div>
-            <h3>Registrar Pedido</h3>
-            <p>Captura un nuevo pedido de cliente para iniciar el proceso de certificación.</p>
+            <h3>Registrar Venta</h3>
+            <p>Captura una nueva venta. Se generará automáticamente una orden y pedido vinculado.</p>
         </a>
     </div>
     {% endif %}

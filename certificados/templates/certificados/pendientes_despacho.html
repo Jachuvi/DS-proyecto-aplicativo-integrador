@@ -67,9 +67,17 @@
                             {% endif %}
                         </td>
                         <td class="text-end">
+                            {% with primer_lote=pedido.lotes.first %}
+                            {% if primer_lote %}
+                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#asignarLoteModal{{ pedido.id }}">
+                                Editar Lote
+                            </button>
+                            {% else %}
                             <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#asignarLoteModal{{ pedido.id }}">
                                 Asignar Lote
                             </button>
+                            {% endif %}
+                            {% endwith %}
                         </td>
                     </tr>
                     {% empty %}
