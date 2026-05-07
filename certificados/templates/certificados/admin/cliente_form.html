@@ -24,6 +24,22 @@ document.addEventListener('DOMContentLoaded', initAutocomplete);
         <form method="post">
             {% csrf_token %}
             {% for field in form %}
+            {% if field.name == 'nombre' %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+            </div>
+            {% endif %}
+            {% if field.name == 'rfc' %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+            </div>
+            {% endif %}
             {% if field.name == 'direccion_fiscal_calle' %}
             <fieldset class="mb-4 border p-3 rounded">
                 <legend class="h6 mb-3 text-primary">Dirección fiscal</legend>
@@ -57,7 +73,7 @@ document.addEventListener('DOMContentLoaded', initAutocomplete);
                 <legend class="h6 mb-3 text-primary">Dirección de entrega</legend>
                 <div class="form-check mb-3">
                     {{ field }}
-                    <label for="{{ field.id_for_label }}" class="form-check-label ms-2">{{ field.help_text|default:"Usar la misma dirección fiscal para entrega" }}</label>
+                    <label for="{{ field.id_for_label }}" class="form-check-label ms-2">{{ field.help_text }}</label>
                 </div>
                 <div id="direccion_entrega_inputs" style="display: none;">
                     <div class="mb-3">
@@ -83,6 +99,25 @@ document.addEventListener('DOMContentLoaded', initAutocomplete);
             </div>
             {% endif %}
             {% if field.name == 'direccion_entrega_estado' %}
+                </div>
+            </fieldset>
+            {% endif %}
+            {% if field.name == 'contacto' %}
+            <fieldset class="mb-4 border p-3 rounded">
+                <legend class="h6 mb-3 text-primary">Contacto</legend>
+                <div class="mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                    {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+                </div>
+            {% endif %}
+            {% if field.name == 'correo_contacto' %}
+                <div class="mb-3">
+                    <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                    {{ field }}
+                    {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                    {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
                 </div>
             </fieldset>
             {% endif %}
