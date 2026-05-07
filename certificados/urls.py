@@ -33,6 +33,7 @@ urlpatterns = [
 
     # Administración — Clientes
     path('admin-catalogo/clientes/', views.ClienteListView.as_view(), name='cliente_list'),
+    path('admin-catalogo/clientes/<int:pk>/', views.ClienteDetailView.as_view(), name='cliente_detail'),
     path('admin-catalogo/clientes/nuevo/', views.ClienteCreateView.as_view(), name='cliente_create'),
     path('admin-catalogo/clientes/<int:pk>/editar/', views.ClienteUpdateView.as_view(), name='cliente_update'),
     path('admin-catalogo/clientes/<int:pk>/baja/', views.ClienteBajaView.as_view(), name='cliente_baja'),
@@ -46,6 +47,7 @@ urlpatterns = [
     # Administración — Equipos
     path('admin-catalogo/equipos/', views.EquipoListView.as_view(), name='equipo_list'),
     path('admin-catalogo/equipos/nuevo/', views.EquipoCreateView.as_view(), name='equipo_create'),
+    path('admin-catalogo/equipos/<int:pk>/', views.EquipoDetailView.as_view(), name='equipo_detail'),
     path('admin-catalogo/equipos/<int:pk>/editar/', views.EquipoUpdateView.as_view(), name='equipo_update'),
     path('admin-catalogo/equipos/<int:pk>/baja/', views.EquipoBajaView.as_view(), name='equipo_baja'),
 

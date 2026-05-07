@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+{% block title %}Cliente: {{ cliente.nombre }}{% endblock %}
+{% block page_title %}Detalle del Cliente{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="card-title mb-0">{{ cliente.nombre }}</h2>
+            <div class="d-flex gap-2">
+                <a href="{% url 'cliente_list' %}" class="btn-brand-outline">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </a>
+                <a href="{% url 'cliente_update' cliente.id %}" class="btn-brand">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <th class="text-muted">ID Cliente (SAP ByD):</th>
+                        <td>{{ cliente.id_cliente|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Nombre:</th>
+                        <td><strong>{{ cliente.nombre }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">RFC:</th>
+                        <td>{{ cliente.rfc }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Contacto:</th>
+                        <td>{{ cliente.contacto|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Correo:</th>
+                        <td>{{ cliente.correo_contacto }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Requiere Certificado:</th>
+                        <td>
+                            {% if cliente.requiere_certificado %}
+                            <span class="badge bg-success">Sí</span>
+                            {% else %}
+                            <span class="badge bg-secondary">No</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Estado:</th>
+                        <td>
+                            {% if cliente.activo %}
+                            <span class="badge bg-success">Activo</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <th class="text-muted">Fecha de Alta:</th>
+                        <td>{{ cliente.fecha_alta|date:"d/m/Y" }}</td>
+                    </tr>
+                    {% if not cliente.activo %}
+                    <tr>
+                        <th class="text-muted">Causa de Baja:</th>
+                        <td>{{ cliente.causa_baja|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Fecha de Baja:</th>
+                        <td>{{ cliente.fecha_baja|date:"d/m/Y"|default:"—" }}</td>
+                    </tr>
+                    {% endif %}
+                    {% if cliente.clave_doc_especificaciones %}
+                    <tr>
+                        <th class="text-muted">Clave Doc. Especificaciones:</th>
+                        <td>{{ cliente.clave_doc_especificaciones }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        <div class="row mt-3">
+            <div class="col-md-6">
+                <div class="card mt-3">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Dirección Fiscal</h5>
+                    </div>
+                    <div class="card-body">
+                        <p class="mb-0">{{ cliente.get_direccion_fiscal|default:"—" }}</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card mt-3">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">Dirección de Entrega</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if cliente.direccion_entrega_misma %}
+                        <p class="mb-0 text-muted"><em>Misma que fiscal</em></p>
+                        {% else %}
+                        <p class="mb-0">{{ cliente.get_direccion_entrega|default:"—" }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4">
+            <a href="{% url 'parametro_cliente_list' cliente.id %}" class="btn-brand-outline">
+                <i class="bi bi-sliders"></i> Ver Parámetros Personalizados
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

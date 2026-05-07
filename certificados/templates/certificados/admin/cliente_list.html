@@ -19,6 +19,7 @@
             <table class="table align-middle">
                 <thead>
                     <tr>
+                        <th>ID Cliente</th>
                         <th>Nombre</th>
                         <th>RFC</th>
                         <th>Contacto</th>
@@ -31,6 +32,7 @@
                 <tbody>
                     {% for cliente in clientes %}
                     <tr class="{% if not cliente.activo %}text-muted{% endif %}">
+                        <td>{{ cliente.id_cliente|default:"—" }}</td>
                         <td><strong>{{ cliente.nombre }}</strong></td>
                         <td>{{ cliente.rfc }}</td>
                         <td>{{ cliente.contacto }}</td>
@@ -53,6 +55,9 @@
                         </td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-2">
+                                <a href="{% url 'cliente_detail' cliente.id %}" class="btn-brand-outline">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
                                 <a href="{% url 'parametro_cliente_list' cliente.id %}" class="btn-brand-outline">
                                     <i class="bi bi-sliders"></i> Parámetros
                                 </a>

@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}Equipo: {{ equipo.clave }}{% endblock %}
+{% block page_title %}Detalle del Equipo{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h2 class="card-title mb-0">{{ equipo.clave }} - {{ equipo.get_tipo_display }}</h2>
+            <div class="d-flex gap-2">
+                <a href="{% url 'equipo_list' %}" class="btn-brand-outline">
+                    <i class="bi bi-arrow-left"></i> Volver
+                </a>
+                <a href="{% url 'equipo_update' equipo.id %}" class="btn-brand">
+                    <i class="bi bi-pencil"></i> Editar
+                </a>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <th class="text-muted">Clave:</th>
+                        <td><strong>{{ equipo.clave }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Tipo:</th>
+                        <td>{{ equipo.get_tipo_display }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Marca:</th>
+                        <td>{{ equipo.marca|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Modelo:</th>
+                        <td>{{ equipo.modelo|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Número de Serie:</th>
+                        <td>{{ equipo.serie|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Responsable:</th>
+                        <td>{{ equipo.responsable.nombre|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Proveedor:</th>
+                        <td>{{ equipo.proveedor|default:"—" }}</td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-borderless">
+                    <tr>
+                        <th class="text-muted">Fecha de Adquisición:</th>
+                        <td>{{ equipo.fecha_adquisicion|date:"d/m/Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Garantía hasta:</th>
+                        <td>{{ equipo.garantia_hasta|date:"d/m/Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Ubicación:</th>
+                        <td>{{ equipo.ubicacion|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Estado:</th>
+                        <td>
+                            {% if equipo.activo %}
+                            <span class="badge bg-success">Activo</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Baja</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if not equipo.activo %}
+                    <tr>
+                        <th class="text-muted">Causa de Baja:</th>
+                        <td>{{ equipo.causa_baja|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="text-muted">Fecha de Baja:</th>
+                        <td>{{ equipo.fecha_baja|date:"d/m/Y"|default:"—" }}</td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-3">
+            <h5 class="text-muted">Descripción Corta</h5>
+            <p>{{ equipo.descripcion_corta|default:"—" }}</p>
+            
+            <h5 class="text-muted mt-3">Descripción Larga</h5>
+            <p>{{ equipo.descripcion_larga|default:"—" }}</p>
+            
+            <h5 class="text-muted mt-3">Mantenimiento</h5>
+            <p>{{ equipo.mantenimiento|default:"—" }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}

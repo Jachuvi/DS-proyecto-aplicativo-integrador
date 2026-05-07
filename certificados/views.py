@@ -654,6 +654,12 @@ class ClienteListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
     ordering = ["-activo", "nombre"]
 
 
+class ClienteDetailView(LoginRequiredMixin, AdminOnlyMixin, DetailView):
+    model = Cliente
+    template_name = "certificados/admin/cliente_detail.html"
+    context_object_name = "cliente"
+
+
 class ClienteCreateView(
     LoginRequiredMixin, AdminOnlyMixin, CatalogoFormMixin, CreateView
 ):
@@ -789,6 +795,20 @@ class EquipoListView(LoginRequiredMixin, AdminOnlyMixin, ListView):
     context_object_name = "equipos"
     ordering = ["-activo", "tipo", "serie"]
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        filter_status = self.request.GET.get("filter", "todos")
+        if filter_status == "activos":
+            queryset = queryset.filter(activo=True)
+        elif filter_status == "baja":
+            queryset = queryset.filter(activo=False)
+        return queryset
+
+    def get_context_data(self, **kwargs):
+        ctx = super().get_context_data(**kwargs)
+        ctx["filter"] = self.request.GET.get("filter", "todos")
+        return ctx
+
 
 _EQUIPO_FIELDS = [
     "clave",
@@ -837,6 +857,12 @@ class EquipoUpdateView(
             self.request, f"Equipo '{form.cleaned_data['serie']}' actualizado."
         )
         return super().form_valid(form)
+
+
+class EquipoDetailView(LoginRequiredMixin, AdminOnlyMixin, DetailView):
+    model = Equipo
+    template_name = "certificados/admin/equipo_detail.html"
+    context_object_name = "equipo"
 
 
 class EquipoBajaView(LoginRequiredMixin, AdminOnlyMixin, View):

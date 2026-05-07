@@ -24,6 +24,14 @@ document.addEventListener('DOMContentLoaded', initAutocomplete);
         <form method="post">
             {% csrf_token %}
             {% for field in form %}
+            {% if field.name == 'id_cliente' %}
+            <div class="mb-3">
+                <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>
+                {{ field }}
+                {% if field.help_text %}<small class="text-muted d-block">{{ field.help_text }}</small>{% endif %}
+                {% if field.errors %}<div class="text-danger small mt-1">{{ field.errors|join:" " }}</div>{% endif %}
+            </div>
+            {% endif %}
             {% if field.name == 'nombre' %}
             <div class="mb-3">
                 <label for="{{ field.id_for_label }}" class="form-label">{{ field.label }}</label>

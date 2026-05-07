@@ -56,6 +56,13 @@ class Usuario(AbstractBaseUser, PermissionsMixin):
 
 
 class Cliente(models.Model):
+    id_cliente = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        unique=True,
+        help_text="ID del cliente en SAP Business ByDesign"
+    )
     nombre = models.CharField(max_length=255)
     rfc = models.CharField(max_length=13, unique=True)
 

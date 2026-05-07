@@ -15,6 +15,14 @@
             </a>
         </div>
 
+        <div class="mb-3">
+            <div class="btn-group" role="group">
+                <a href="?filter=todos" class="btn btn-sm {% if filter == 'todos' or not filter %}btn-brand{% else %}btn-brand-outline{% endif %}">Todos</a>
+                <a href="?filter=activos" class="btn btn-sm {% if filter == 'activos' %}btn-brand{% else %}btn-brand-outline{% endif %}">Activos</a>
+                <a href="?filter=baja" class="btn btn-sm {% if filter == 'baja' %}btn-brand{% else %}btn-brand-outline{% endif %}">Baja</a>
+            </div>
+        </div>
+
         <div class="table-responsive">
             <table class="table align-middle">
                 <thead>
@@ -53,6 +61,9 @@
                         </td>
                         <td class="text-end">
                             <div class="d-inline-flex gap-2">
+                                <a href="{% url 'equipo_detail' equipo.id %}" class="btn-brand-outline">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
                                 <a href="{% url 'equipo_update' equipo.id %}" class="btn-brand-outline">
                                     <i class="bi bi-pencil"></i> Editar
                                 </a>

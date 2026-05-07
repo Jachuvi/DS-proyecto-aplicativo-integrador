@@ -6,6 +6,7 @@ class ClienteForm(forms.ModelForm):
     class Meta:
         model = Cliente
         fields = [
+            "id_cliente",
             "nombre",
             "rfc",
             "direccion_fiscal_calle",
@@ -27,7 +28,11 @@ class ClienteForm(forms.ModelForm):
             "correo_contacto",
             "requiere_certificado",
         ]
+        labels = {
+            "id_cliente": "Id cliente (SAP ByD)",
+        }
         widgets = {
+            "id_cliente": forms.TextInput(attrs={"class": "form-control", "placeholder": "ID de SAP Business ByDesign"}),
             "nombre": forms.TextInput(attrs={"class": "form-control"}),
             "rfc": forms.TextInput(attrs={"class": "form-control", "maxlength": "13"}),
             "direccion_fiscal_calle": forms.TextInput(
