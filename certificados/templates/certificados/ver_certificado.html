@@ -9,7 +9,6 @@
             <h2 class="card-title mb-0">Certificado #{{ certificado.id }}</h2>
             <div class="d-flex gap-2">
                 <a href="{% url 'editar_certificado' certificado.pk %}" class="btn-brand-outline">Editar</a>
-                <a href="{% url 'imprimir_certificado' certificado.pk %}" class="btn-brand-outline" target="_blank">Imprimir</a>
                 <a href="{% url 'descargar_certificado' certificado.pk %}" class="btn-brand">Descargar PDF</a>
             </div>
         </div>

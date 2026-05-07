@@ -2,95 +2,141 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-<title>Certificado de Calidad - {{ certificado.folio }}</title>
-        <style>
-            body { font-family: Arial, sans-serif; }
-            .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-            .header .folio { font-size: 14pt; font-weight: bold; }
-            table { width: 100%; border-collapse: collapse; }
-            th, td { padding: 8px; border: 1px solid #ddd; text-align: left; }
-            th { background: #f5f5f5; }
-        </style>
-    </head>
-    <body>
-        <div class="header">
-            <div>
-                <h1>Harinas Elizondo</h1>
-                <p>Certificado de Calidad</p>
-            </div>
-            <div class="folio">{{ certificado.folio }}</div>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Certificado de Control de Calidad - {{ certificado.folio }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <style>
+        @media print {
+            body { font-size: 10pt; }
+            .container { max-width: 100% !important; border: none !important; }
+            .badge-print { border: 1px solid #000; color: #000 !important; background-color: transparent !important; }
+            .table-light th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        }
+        .cert-container {
+            max-width: 210mm;
+            margin: auto;
+            border: 1px solid #dee2e6;
+            background-color: #ffffff;
+        }
+    </style>
+</head>
+<body class="bg-light py-4">
+
+<div class="container cert-container p-4 p-md-5 shadow-sm">
+    
+    <header class="row border-bottom border-dark pb-3 mb-4 align-items-center">
+        <div class="col-12 text-center">
+            <img src="/static/img/logo.webp" alt="Harinas Elizondo" style="max-height: 60px;" class="mb-3">
+            <h1 class="h4 text-uppercase fw-bold mb-1">Certificado de Control de Calidad Analítica</h1>
+            <p class="mb-0 text-muted">Documento Oficial de Liberación de Lote</p>
+            <p class="mt-2 fw-bold">Folio: {{ certificado.folio }}</p>
         </div>
-        
-        <table>
-            <tr><th>Número de Orden</th><td>#{{ certificado.pedido.id }}</td></tr>
-                    <tr><th>Cliente</th><td>{{ certificado.pedido.cliente.nombre }}</td></tr>
-                    <tr><th>RFC</th><td>{{ certificado.pedido.cliente.rfc }}</td></tr>
-                    <tr><th>Cantidad Solicitada</th><td>{{ certificado.pedido.cantidad }}</td></tr>
-                    <tr><th>Número de Factura</th><td>{{ certificado.numero_factura|default:"—" }}</td></tr>
-                </table>
-            </div>
-        </div>
-        
-        <div class="section">
-            <div class="section-title">Resultados de Análisis</div>
-            <table>
-                <thead>
+    </header>
+
+    <section class="mb-4">
+        <h2 class="h6 bg-secondary text-white p-2 fw-bold text-uppercase border border-dark">1. Trazabilidad y Datos Logísticos</h2>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered border-dark mb-0 align-middle">
+                <tbody>
                     <tr>
-                        <th>Parámetro</th>
-                        <th>Unidad</th>
+                        <th class="table-light w-25">Número de Lote de Producción:</th>
+                        <td class="w-25 fw-bold">{{ certificado.inspeccion.lote.codigo_lote }}</td>
+                        <th class="table-light w-25">Fecha de Producción:</th>
+                        <td class="w-25">{{ certificado.inspeccion.lote.fecha_produccion|date:"d-M-Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="table-light">Número de Orden de Compra:</th>
+                        <td>#{{ certificado.pedido.id }}</td>
+                        <th class="table-light">Fecha de Pedido:</th>
+                        <td>{{ certificado.pedido.fecha_pedido|date:"d-M-Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="table-light">Número de Factura:</th>
+                        <td>{{ certificado.numero_factura|default:"—" }}</td>
+                        <th class="table-light">Fecha de Caducidad:</th>
+                        <td>{{ certificado.fecha_caducidad|date:"d-M-Y"|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="table-light">Cantidad Solicitada:</th>
+                        <td>{{ certificado.pedido.cantidad|default:"—" }} kg</td>
+                        <th class="table-light">Cantidad Total por Entrega:</th>
+                        <td>{{ certificado.cantidad_total_entrega|default:certificado.pedido.cantidad|default:"—" }} kg</td>
+                    </tr>
+                    <tr>
+                        <th class="table-light">Descripción del Producto:</th>
+                        <td colspan="3" class="text-uppercase">{{ certificado.inspeccion.lote.producto.nombre|default:"—" }}</td>
+                    </tr>
+                    <tr>
+                        <th class="table-light">Cliente:</th>
+                        <td colspan="3">{{ certificado.pedido.cliente.nombre|default:"—" }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="mb-4">
+        <h2 class="h6 bg-secondary text-white p-2 fw-bold text-uppercase border border-dark">2. Resultados Analíticos y Parámetros de Control</h2>
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered table-striped border-dark text-center align-middle mb-0">
+                <thead class="table-light border-dark">
+                    <tr>
+                        <th class="text-start">Parámetro Analizado</th>
+                        <th>Método / Instrumento</th>
                         <th>Valor Obtenido</th>
                         <th>Valor de Referencia</th>
-                        <th>Desviación</th>
-                        <th>Cumple</th>
+                        <th>Desviación Numérica</th>
+                        <th>Unidad de Medida</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody class="table-group-divider">
                     {% for res in certificado.inspeccion.resultados.all %}
                     <tr>
-                        <td>{{ res.parametro.nombre }}</td>
-                        <td>{{ res.parametro.unidad }}</td>
-                        <td class="text-center"><strong>{{ res.valor_obtenido }}</strong></td>
-                        <td class="text-center">{{ res.parametro.ref_min }} - {{ res.parametro.ref_max }}</td>
-                        <td class="text-right">{{ res.desvio_vs_ref }}</td>
-                        <td class="text-center">
-                            {% if res.valor_obtenido >= res.parametro.ref_min and res.valor_obtenido <= res.parametro.ref_max %}
-                            <span class="badge-pass">CUMPLE</span>
-                            {% else %}
-                            <span class="badge-fail">NO CUMPLE</span>
-                            {% endif %}
+                        <td class="text-start fw-bold">{{ res.parametro.nombre }}</td>
+                        <td>{% if res.parametro.equipo %}{{ res.parametro.equipo.get_tipo_display }}{% else %}—{% endif %}</td>
+                        <td>{{ res.valor_obtenido }}</td>
+                        <td>{{ res.parametro.ref_min|floatformat }} - {{ res.parametro.ref_max|floatformat }}</td>
+                        <td class="{% if res.desvio_vs_ref > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
+                            {% if res.desvio_vs_ref > 0 %}+{% endif %}{{ res.desvio_vs_ref|floatformat }}
                         </td>
+                        <td>{{ res.parametro.unidad }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
             </table>
         </div>
-        
-        <div class="section">
-            <div class="section-title">Información Adicional</div>
-            <table>
-                <tr><th>Inspección</th><td>{{ certificado.inspeccion.clave }}</td></tr>
-                <tr><th>Equipo Utilizado</th><td>{{ certificado.inspeccion.equipo.get_tipo_display }} - {{ certificado.inspeccion.equipo.serie }}</td></tr>
-                <tr><th>Fecha de Análisis</th><td>{{ certificado.inspeccion.fecha_inspeccion|date:"d/m/Y H:i" }}</td></tr>
-                <tr><th>Resultado Final</th><td><strong>{% if certificado.inspeccion.cumple_param %}CUMPLE{% else %}NO CUMPLE{% endif %}</strong></td></tr>
-            </table>
+    </section>
+
+    <section class="mb-5">
+        <h2 class="h6 bg-secondary text-white p-2 fw-bold text-uppercase border border-dark">3. Declaración de Conformidad</h2>
+        <div class="border border-dark p-3 text-justify">
+            <p class="mb-0">
+                Se certifica mediante el presente documento que los valores analíticos reportados en la <strong>Sección 2</strong> corresponden a muestras representativas del Lote <strong>{{ certificado.inspeccion.lote.codigo_lote }}</strong>, extraídas bajo protocolo de muestreo aleatorio estratificado. El material analizado 
+                <span class="badge bg-success text-uppercase badge-print border-dark">
+                    {% if certificado.inspeccion.cumple_param %}CUMPLE{% else %}NO CUMPLE{% endif %}
+                </span>
+                con todas las especificaciones técnicas estipuladas en el contrato de suministro y los márgenes de tolerancia legales establecidos por los entes reguladores.
+            </p>
         </div>
-        
-        <div class="footer">
-            <p><strong>Fecha de Emisión:</strong> {{ certificado.fecha_emision|date:"d/m/Y H:i" }}</p>
-            <p><strong>Estado:</strong> {{ certificado.get_estado_display }}</p>
-            {% if certificado.aprobado_por %}
-            <p><strong>Aprobado por:</strong> {{ certificado.aprobado_por.nombre }}</p>
+    </section>
+
+    <footer class="row mt-5 pt-4">
+        <div class="col-6 text-center">
+            <div class="border-top border-dark w-75 mx-auto mb-2"></div>
+            <p class="mb-0 fw-bold">{{ certificado.inspeccion.equipo.responsable.nombre|default:"—" }}</p>
+            <p class="mb-0 small">Responsable de Laboratorio</p>
+        </div>
+        <div class="col-6 text-center">
+            <div class="border-top border-dark w-75 mx-auto mb-2"></div>
+            <p class="mb-0 fw-bold">{% if certificado.aprobado_por %}{{ certificado.aprobado_por.nombre }}{% else %}—{% endif %}</p>
+            <p class="mb-0 small">Director de Aseguramiento de Calidad</p>
+            {% if certificado.fecha_aprobacion %}
+            <p class="text-muted small">Fecha: {{ certificado.fecha_aprobacion|date:"d/M/Y" }}</p>
             {% endif %}
         </div>
-        
-        <div class="firma">
-            <div class="firma-box">
-                <div class="linea">Responsable de Laboratorio</div>
-            </div>
-            <div class="firma-box">
-                <div class="linea">Responsable de Calidad</div>
-            </div>
-        </div>
-    </div>
+    </footer>
+
+</div>
+
 </body>
 </html>

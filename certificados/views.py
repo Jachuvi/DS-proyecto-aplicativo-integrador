@@ -1150,15 +1150,7 @@ class IniciarInspeccionFromLoteView(LoginRequiredMixin, RoleRequiredMixin, View)
 
     def get(self, request, lote_id):
         lote = get_object_or_404(Lote, id=lote_id)
-        equipos = Equipo.objects.filter(activo=True)
         parametros = Parametro.objects.filter(activo=True)
-        
-        cliente = None
-        overrides = {}
-        if lote.pedido and lote.pedido.cliente:
-            cliente = lote.pedido.cliente
-            for pc in cliente.parametros_cliente.filter(activo=True):
-                overrides[pc.parametro_id] = (pc.ref_min, pc.ref_max)
         
         count = Inspeccion.objects.filter(lote=lote).count()
         letra = string.ascii_uppercase[count] if count < 26 else "Z"
@@ -1167,53 +1159,38 @@ class IniciarInspeccionFromLoteView(LoginRequiredMixin, RoleRequiredMixin, View)
         
         return render(request, "certificados/iniciar_inspeccion.html", {
             "lote": lote,
-            "cliente": cliente,
-            "equipos": equipos,
             "parametros": parametros,
             "parametros_global": parametros.filter(equipo__isnull=True),
             "parametros_alveograma": parametros.filter(equipo__tipo='alveografo'),
             "parametros_farinograma": parametros.filter(equipo__tipo='farinografo'),
             "inspeccion_clave": inspeccion_clave,
-            "param_ref_overrides": overrides,
         })
 
     def post(self, request, lote_id):
         lote = get_object_or_404(Lote, id=lote_id)
-        equipo_id = request.POST.get("equipo") or request.POST.get("equipoSelect")
-        if not equipo_id:
-            overrides = {}
-            cliente_obj = None
-            if lote.pedido and lote.pedido.cliente:
-                cliente_obj = lote.pedido.cliente
-                overrides = {pc.parametro_id: (pc.ref_min, pc.ref_max) for pc in cliente_obj.parametros_cliente.filter(activo=True)}
-            return render(request, "certificados/iniciar_inspeccion.html", {
-                "lote": lote,
-                "cliente": cliente_obj,
-                "equipos": Equipo.objects.filter(activo=True),
-                "parametros": Parametro.objects.filter(activo=True),
-                "parametros_global": Parametro.objects.filter(equipo__isnull=True),
-                "parametros_alveograma": Parametro.objects.filter(equipo__tipo='alveografo'),
-                "parametros_farinograma": Parametro.objects.filter(equipo__tipo='farinografo'),
-                "param_ref_overrides": overrides,
-                "error": "Debe seleccionar un equipo.",
-            })
         
-        equipo = get_object_or_404(Equipo, id=equipo_id)
+        parametros = Parametro.objects.filter(activo=True)
         
         with transaction.atomic():
-            inspeccion = Inspeccion.objects.create(lote=lote, equipo=equipo)
+            count = Inspeccion.objects.filter(lote=lote).count()
+            letra = string.ascii_uppercase[count] if count < 26 else "Z"
+            lote_id_short = lote.codigo_lote.replace("L-", "") if lote.codigo_lote else str(lote.id)
+            clave = f"{letra}-{lote_id_short}"
             
-            parametros = Parametro.objects.filter(activo=True)
+            inspeccion = Inspeccion.objects.create(lote=lote, equipo_id=None, clave=clave)
             
             for p in parametros:
+                include_key = f"include_param_{p.id}"
                 valor_key = f"param_{p.id}"
-                valor = request.POST.get(valor_key)
-                if valor:
-                    Resultado.objects.create(
-                        inspeccion=inspeccion,
-                        parametro=p,
-                        valor_obtenido=valor
-                    )
+                
+                if request.POST.get(include_key):
+                    valor = request.POST.get(valor_key)
+                    if valor:
+                        Resultado.objects.create(
+                            inspeccion=inspeccion,
+                            parametro=p,
+                            valor_obtenido=valor
+                        )
             
             inspeccion.cumple_param = True
             inspeccion.save()

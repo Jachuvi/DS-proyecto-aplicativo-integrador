@@ -302,7 +302,7 @@ class Lote(models.Model):
 
 class Inspeccion(models.Model):
     lote = models.ForeignKey(Lote, on_delete=models.CASCADE)
-    equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE)
+    equipo = models.ForeignKey(Equipo, on_delete=models.CASCADE, null=True, blank=True)
     clave = models.CharField(max_length=50, blank=True)
     fecha_inspeccion = models.DateTimeField(default=timezone.now)
     cumple_param = models.BooleanField(default=False)
