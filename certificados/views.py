@@ -1467,8 +1467,33 @@ class DescargarCertificadoPDFView(LoginRequiredMixin, RoleRequiredMixin, View):
             pk=pk
         )
 
+        parametro_data = {}
+        if certificado.inspeccion.lote.pedido and certificado.inspeccion.lote.pedido.cliente:
+            cliente = certificado.inspeccion.lote.pedido.cliente
+            for pc in ParametroCliente.objects.filter(cliente=cliente, activo=True):
+                parametro_data[pc.parametro_id] = {
+                    'ref_min': pc.ref_min,
+                    'ref_max': pc.ref_max,
+                    'is_client': True
+                }
+            for res in certificado.inspeccion.resultados.all():
+                if res.parametro_id not in parametro_data:
+                    parametro_data[res.parametro_id] = {
+                        'ref_min': res.parametro.ref_min,
+                        'ref_max': res.parametro.ref_max,
+                        'is_client': False
+                    }
+
+        from django.conf import settings
+        static_root = settings.BASE_DIR / 'static'
+        
         template = django.template.loader.get_template("certificados/imprimir_certificado.html")
-        html = template.render({"certificado": certificado, "pdf_mode": True})
+        html = template.render({
+            "certificado": certificado, 
+            "pdf_mode": True, 
+            "parametro_data": parametro_data,
+            "static_root": str(static_root)
+        })
 
         buffer = BytesIO()
         pisa_status = pisa.CreatePDF(html, dest=buffer)

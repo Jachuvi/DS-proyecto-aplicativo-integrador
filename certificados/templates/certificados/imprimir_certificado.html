@@ -1,170 +1,203 @@
+{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Certificado de Control de Calidad - {{ certificado.folio }}</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
+    <title>Certificado de Calidad - {{ certificado.folio }}</title>
     <style>
-        @media print {
-            body { font-size: 10pt; }
-            .container { max-width: 100% !important; border: none !important; }
-            .badge-print { border: 1px solid #000; color: #000 !important; background-color: transparent !important; }
-            .table-light th { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        @page {
+            size: A4 portrait;
+            margin: 15mm;
         }
-        .cert-container {
-            max-width: 210mm;
-            margin: auto;
-            border: 1px solid #dee2e6;
-            background-color: #ffffff;
+        
+        body {
+            font-family: Helvetica, Arial, sans-serif;
+            font-size: 10pt;
+            color: #000000;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .header img {
+            max-width: 120px;
+            margin-bottom: 5px;
+        }
+
+        .header h1 {
+            font-size: 16pt;
+            margin: 5px 0;
+        }
+
+        .header p {
+            font-size: 9pt;
+            margin: 0;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        td {
+            padding: 2px 5px;
+            font-size: 9pt;
+        }
+
+        th {
+            text-align: left;
+            font-weight: bold;
+            padding: 2px 5px;
+            font-size: 9pt;
+        }
+
+        .section-title {
+            font-weight: bold;
+            font-size: 10pt;
+            margin: 10px 0 5px 0;
+            border-bottom: 1px solid #000000;
+        }
+
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 10px 0;
+        }
+
+        .results-table th, .results-table td {
+            padding: 4px 6px;
+            font-size: 9pt;
+        }
+
+        .results-table th {
+            background-color: #eeeeee;
+            text-align: left;
+        }
+
+        .text-center { text-align: center; }
+
+        .footer {
+            margin-top: 30px;
+        }
+
+        .signatures td {
+            text-align: center;
+            padding-top: 30px;
+        }
+
+        .signatures .line {
+            border-top: 1px solid #000000;
+            width: 60%;
+            margin: 0 auto 3px auto;
+        }
+
+        .address-cell {
+            vertical-align: top;
         }
     </style>
 </head>
-<body class="bg-light py-4">
+<body>
 
-<div class="container cert-container p-4 p-md-5 shadow-sm">
-    
-    <header class="row border-bottom border-dark pb-3 mb-4 align-items-center">
-        <div class="col-12 text-center">
-            <img src="/static/img/logo.webp" alt="Harinas Elizondo" style="max-height: 60px;" class="mb-3">
-            <h1 class="h4 text-uppercase fw-bold mb-1">Certificado de Control de Calidad Analítica</h1>
-            <p class="mb-0 text-muted">Documento Oficial de Liberación de Lote</p>
-            <p class="mt-2 fw-bold">Folio: {{ certificado.folio }}</p>
-        </div>
-    </header>
+<div class="header">
+    <img src="{{ static_root }}/img/logo.webp" width="80" alt="Logo">
+    <h1>Certificado de Calidad</h1>
+    <p>Folio: {{ certificado.folio }}</p>
+</div>
 
-    <section class="mb-4">
-        <h2 class="h6 bg-secondary text-white p-2 fw-bold text-uppercase border border-dark">1. Trazabilidad y Datos Logísticos</h2>
-        <div class="table-responsive">
-            <table class="table table-sm table-bordered border-dark mb-0 align-middle">
-                <tbody>
-                    <tr>
-                        <th class="table-light w-25">Número de Lote de Producción:</th>
-                        <td class="w-25 fw-bold">{{ certificado.inspeccion.lote.codigo_lote }}</td>
-                        <th class="table-light w-25">Fecha de Producción:</th>
-                        <td class="w-25">{{ certificado.inspeccion.lote.fecha_produccion|date:"d-M-Y"|default:"—" }}</td>
-                    </tr>
-                    <tr>
-                        <th class="table-light">Número de Orden de Compra:</th>
-                        <td>#{{ certificado.pedido.id }}</td>
-                        <th class="table-light">Fecha de Pedido:</th>
-                        <td>{{ certificado.pedido.fecha_pedido|date:"d-M-Y"|default:"—" }}</td>
-                    </tr>
-                    <tr>
-                        <th class="table-light">Número de Factura:</th>
-                        <td>{{ certificado.numero_factura|default:"—" }}</td>
-                        <th class="table-light">Fecha de Caducidad:</th>
-                        <td>{{ certificado.fecha_caducidad|date:"d-M-Y"|default:"—" }}</td>
-                    </tr>
-                    <tr>
-                        <th class="table-light">Cantidad Solicitada:</th>
-                        <td>{{ certificado.pedido.cantidad|default:"—" }} kg</td>
-                        <th class="table-light">Cantidad Total por Entrega:</th>
-                        <td>{{ certificado.cantidad_total_entrega|default:certificado.pedido.cantidad|default:"—" }} kg</td>
-                    </tr>
-                    <tr>
-                        <th class="table-light">Descripción del Producto:</th>
-                        <td colspan="3" class="text-uppercase">{{ certificado.inspeccion.lote.producto.nombre|default:"—" }}</td>
-                    </tr>
-                    <tr>
-                        <th class="table-light">Cliente:</th>
-                        <td colspan="3">{{ certificado.pedido.cliente.nombre|default:"—" }}</td>
-                    </tr>
-                    <tr>
-                        <th class="table-light">RFC:</th>
-                        <td colspan="3">{{ certificado.pedido.cliente.rfc|default:"—" }}</td>
-                    </tr>
-                    <tr>
-                        <th class="table-light">Dirección Fiscal:</th>
-                        <td colspan="3">
-                            {% with cliente=certificado.pedido.cliente %}
-                            {% if cliente.direccion_fiscal_calle %}{{ cliente.direccion_fiscal_calle }}, {{ cliente.direccion_fiscal_numero }}{% if cliente.direccion_fiscal_interior %}/{{ cliente.direccion_fiscal_interior }}{% endif %}, {{ cliente.direccion_fiscal_colonia }}, CP {{ cliente.direccion_fiscal_codigo_postal }}, {{ cliente.direccion_fiscal_ciudad }}, {{ cliente.direccion_fiscal_estado }}{% else %}—{% endif %}
-                            {% endwith %}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th class="table-light">Dirección de Entrega:</th>
-                        <td colspan="3">
-                            {% with cliente=certificado.pedido.cliente %}
-                            {% if cliente.direccion_entrega_misma %}
-                            {% if cliente.direccion_fiscal_calle %}{{ cliente.direccion_fiscal_calle }}, {{ cliente.direccion_fiscal_numero }}{% if cliente.direccion_fiscal_interior %}/{{ cliente.direccion_fiscal_interior }}{% endif %}, {{ cliente.direccion_fiscal_colonia }}, CP {{ cliente.direccion_fiscal_codigo_postal }}, {{ cliente.direccion_fiscal_ciudad }}, {{ cliente.direccion_fiscal_estado }}{% else %}—{% endif %}
-                            {% else %}
-                            {% if cliente.direccion_entrega_calle %}{{ cliente.direccion_entrega_calle }}, {{ cliente.direccion_entrega_numero }}{% if cliente.direccion_entrega_interior %}/{{ cliente.direccion_entrega_interior }}{% endif %}, {{ cliente.direccion_entrega_colonia }}, CP {{ cliente.direccion_entrega_codigo_postal }}, {{ cliente.direccion_entrega_ciudad }}, {{ cliente.direccion_entrega_estado }}{% else %}—{% endif %}
-                            {% endif %}
-                            {% endwith %}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </section>
+<div class="section-title">Datos del Pedido</div>
+<table>
+    <tr>
+        <th style="width:15%">Lote:</th>
+        <td style="width:20%">{{ certificado.inspeccion.lote.codigo_lote }}-{{ certificado.inspeccion.lote.secuencia }}</td>
+        <th style="width:15%">Orden de Compra:</th>
+        <td style="width:12%">{{ certificado.pedido.id }}</td>
+        <th style="width:15%">Cantidad Solicitada:</th>
+        <td style="width:13%">{{ certificado.pedido.cantidad|default:"—" }} kg</td>
+    </tr>
+    <tr>
+        <th>Cantidad Entrega:</th>
+        <td>{{ certificado.cantidad_total_entrega|default:"—" }} kg</td>
+        <th style="width:12%">Factura:</th>
+        <td style="width:18%">{{ certificado.numero_factura|default:"—" }}</td>
+        <th style="width:13%">Producto:</th>
+        <td style="width:20%">{{ certificado.inspeccion.lote.producto.nombre|default:"—" }}</td>
+    </tr>
+    <tr>
+        <th>Fecha Expedición:</th>
+        <td>{{ certificado.fecha_emision|date:"d/m/Y" }}</td>
+        <th>Fecha Caducidad:</th>
+        <td colspan="3">{{ certificado.fecha_caducidad|date:"d/m/Y"|default:"—" }}</td>
+    </tr>
+</table>
 
-    <section class="mb-4">
-        <h2 class="h6 bg-secondary text-white p-2 fw-bold text-uppercase border border-dark">2. Resultados Analíticos y Parámetros de Control</h2>
-        <div class="table-responsive">
-            <table class="table table-sm table-bordered table-striped border-dark text-center align-middle mb-0">
-                <thead class="table-light border-dark">
-                    <tr>
-                        <th class="text-start">Parámetro Analizado</th>
-                        <th>Método / Instrumento</th>
-                        <th>Valor Obtenido</th>
-                        <th>Valor de Referencia</th>
-                        <th>Desviación Numérica</th>
-                        <th>Unidad de Medida</th>
-                    </tr>
-                </thead>
-                <tbody class="table-group-divider">
-                    {% for res in certificado.inspeccion.resultados.all %}
-                    {% with data=parametro_data|dict:res.parametro_id %}
-                    <tr>
-                        <td class="text-start fw-bold">{{ res.parametro.nombre }}</td>
-                        <td>{% if res.parametro.equipo %}{{ res.parametro.equipo.get_tipo_display }}{% else %}—{% endif %}</td>
-                        <td>{{ res.valor_obtenido }}</td>
-                        <td>
-                            {{ data.ref_min|floatformat }} - {{ data.ref_max|floatformat }}
-                            {% if data.is_client %}<span class="badge bg-info ms-1">Cliente</span>{% endif %}
-                        </td>
-                        <td class="{% if res.desvio_vs_ref > 0 %}text-success{% else %}text-danger{% endif %} fw-bold">
-                            {% if res.desvio_vs_ref > 0 %}+{% endif %}{{ res.desvio_vs_ref|floatformat }}
-                        </td>
-                        <td>{{ res.parametro.unidad }}</td>
-                    </tr>
-                    {% endwith %}
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </section>
+<div class="section-title">Datos del Cliente</div>
+<table>
+    <tr>
+        <th style="width:15%">Cliente:</th>
+        <td colspan="3">{{ certificado.pedido.cliente.nombre }}</td>
+    </tr>
+    <tr>
+        <th>Dirección Fiscal:</th>
+        <td colspan="3">{{ certificado.pedido.cliente.get_direccion_fiscal|default:"—" }}</td>
+    </tr>
+    <tr>
+        <th>Dirección Entrega:</th>
+        <td colspan="3">{{ certificado.pedido.cliente.get_direccion_entrega|default:"—" }}</td>
+    </tr>
+</table>
 
-    <section class="mb-5">
-        <h2 class="h6 bg-secondary text-white p-2 fw-bold text-uppercase border border-dark">3. Declaración de Conformidad</h2>
-        <div class="border border-dark p-3 text-justify">
-            <p class="mb-0">
-                Se certifica mediante el presente documento que los valores analíticos reportados en la <strong>Sección 2</strong> corresponden a muestras representativas del Lote <strong>{{ certificado.inspeccion.lote.codigo_lote }}</strong>, extraídas bajo protocolo de muestreo aleatorio estratificado. El material analizado 
-                <span class="badge bg-success text-uppercase badge-print border-dark">
-                    {% if certificado.inspeccion.cumple_param %}CUMPLE{% else %}NO CUMPLE{% endif %}
-                </span>
-                con todas las especificaciones técnicas estipuladas en el contrato de suministro y los márgenes de tolerancia legales establecidos por los entes reguladores.
-            </p>
-        </div>
-    </section>
+<div class="section-title">Resultados de Análisis</div>
+<table class="results-table">
+    <thead>
+        <tr>
+            <th>Parámetro</th>
+            <th class="text-center" style="width:10%">Valor</th>
+            <th class="text-center" style="width:8%">Unidad</th>
+            <th class="text-center" style="width:10%">Ref. Mín</th>
+            <th class="text-center" style="width:10%">Ref. Máx</th>
+            <th class="text-center" style="width:8%">Desv</th>
+            <th class="text-center" style="width:12%">Cumple</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for res in certificado.inspeccion.resultados.all %}
+        {% with data=parametro_data|get_item:res.parametro_id %}
+        <tr>
+            <td>{{ res.parametro.nombre }}</td>
+            <td class="text-center">{{ res.valor_obtenido }}</td>
+            <td class="text-center">{{ res.parametro.unidad }}</td>
+            <td class="text-center">{{ data.ref_min }}</td>
+            <td class="text-center">{{ data.ref_max }}</td>
+            <td class="text-center">{{ res.desvio_vs_ref }}</td>
+            <td class="text-center">
+                {% if res.valor_obtenido >= data.ref_min and res.valor_obtenido <= data.ref_max %}
+                Sí
+                {% else %}
+                No
+                {% endif %}
+                {% if data.is_client %}(P){% else %}(I){% endif %}
+            </td>
+        </tr>
+        {% endwith %}
+        {% endfor %}
+    </tbody>
+</table>
 
-    <footer class="row mt-5 pt-4">
-        <div class="col-6 text-center">
-            <div class="border-top border-dark w-75 mx-auto mb-2"></div>
-            <p class="mb-0 fw-bold">{{ certificado.inspeccion.equipo.responsable.nombre|default:"—" }}</p>
-            <p class="mb-0 small">Responsable de Laboratorio</p>
-        </div>
-        <div class="col-6 text-center">
-            <div class="border-top border-dark w-75 mx-auto mb-2"></div>
-            <p class="mb-0 fw-bold">{% if certificado.aprobado_por %}{{ certificado.aprobado_por.nombre }}{% else %}—{% endif %}</p>
-            <p class="mb-0 small">Director de Aseguramiento de Calidad</p>
-            {% if certificado.fecha_aprobacion %}
-            <p class="text-muted small">Fecha: {{ certificado.fecha_aprobacion|date:"d/M/Y" }}</p>
-            {% endif %}
-        </div>
-    </footer>
-
+<div class="footer">
+    <table class="signatures">
+        <tr>
+            <td>
+                <div class="line"></div>
+                <strong>Analista de QC</strong><br>
+                {{ certificado.inspeccion.usuario.get_full_name|default:"Laboratorio de Análisis" }}
+            </td>
+            <td>
+                <div class="line"></div>
+                <strong>Dirección Técnica</strong>
+            </td>
+        </tr>
+    </table>
 </div>
 
 </body>

@@ -33,7 +33,7 @@
                 <div id="seccion_global">
                     <div class="row">
                         {% for p in parametros_global %}
-                        {% with override=parametro_overrides|dict:p.id %}
+                        {% with override=parametro_overrides|dict_lookup:p.id %}
                         <div class="col-md-4 mb-3 param-item" data-seccion="global">
                             <div class="form-check mb-1">
                                 <input type="checkbox" class="form-check-input param-check" id="check_p_{{ p.id }}" name="include_param_{{ p.id }}" value="on" checked onchange="toggleParam('{{ p.id }}')">
@@ -63,7 +63,7 @@
                 <div id="seccion_alveografo">
                     <div class="row">
                         {% for p in parametros_alveograma %}
-                        {% with override=parametro_overrides|dict:p.id %}
+                        {% with override=parametro_overrides|dict_lookup:p.id %}
                         <div class="col-md-4 mb-3 param-item" data-seccion="alveografo">
                             <div class="form-check mb-1">
                                 <input type="checkbox" class="form-check-input param-check" id="check_p_{{ p.id }}" name="include_param_{{ p.id }}" value="on" checked onchange="toggleParam('{{ p.id }}')">
@@ -93,7 +93,7 @@
                 <div id="seccion_farinografo">
                     <div class="row">
                         {% for p in parametros_farinograma %}
-                        {% with override=parametro_overrides|dict:p.id %}
+                        {% with override=parametro_overrides|dict_lookup:p.id %}
                         <div class="col-md-4 mb-3 param-item" data-seccion="farinografo">
                             <div class="form-check mb-1">
                                 <input type="checkbox" class="form-check-input param-check" id="check_p_{{ p.id }}" name="include_param_{{ p.id }}" value="on" checked onchange="toggleParam('{{ p.id }}')">

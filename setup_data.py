@@ -516,7 +516,7 @@ if not Inspeccion.objects.exists():
     print("Farinograma parametros resultados created.")
 
     print("Complete flow created: Venta -> Pedido -> Lote -> Inspeccion with all parameters")
-    print("Certificate creation is now available for the user.")
+    print("Go to Calidad -> Certificados to create the certificate.")
 else:
     inspeccion = Inspeccion.objects.first()
     print("Inspeccion already exists: {}".format(inspeccion.clave))

@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 {% block title %}Ver Certificado{% endblock %}
 {% block page_title %}Ver Certificado{% endblock %}
 
@@ -45,7 +46,7 @@
             </thead>
             <tbody>
                 {% for res in certificado.inspeccion.resultados.all %}
-                {% with data=parametro_data|dict:res.parametro_id %}
+                {% with data=parametro_data|dict_lookup:res.parametro_id %}
                 <tr>
                     <td>{{ res.parametro.nombre }}</td>
                     <td><strong>{{ res.valor_obtenido }}</strong> {{ res.parametro.unidad }}</td>

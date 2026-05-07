@@ -71,98 +71,111 @@
 </div>
 
 <script>
-var loteData = {};
+// Nota Técnica: Asegúrese de que la librería jQuery esté importada en 'base.html' antes de la ejecución de este script.
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('Script loaded y DOM inicializado');
+    var loteData = {};
+    
+    // Pre-carga estructurada de datos procesados por el motor de plantillas de Django
+    {% for lote in lotes %}
+    loteData[{{ lote.id }}] = {
+        codigo_lote: '{{ lote.codigo_lote }}',
+        producto: '{{ lote.producto.nombre|default:"" }}',
+        cantidad: '{{ lote.cantidad|default:"" }}',
+        fecha_prod: '{% if lote.fecha_produccion %}{{ lote.fecha_produccion|date:"d/m/Y" }}{% endif %}',
+        fecha_cad: '{% if lote.fecha_caducidad %}{{ lote.fecha_caducidad|date:"d/m/Y" }}{% endif %}',
+        {% if lote.pedido and lote.pedido.cliente %}
+        cliente: '{{ lote.pedido.cliente.nombre|escapejs }}',
+        rfc: '{{ lote.pedido.cliente.rfc|escapejs }}',
+        direccion: '{% if lote.pedido.cliente.direccion_fiscal_calle %}{{ lote.pedido.cliente.direccion_fiscal_calle }} {{ lote.pedido.cliente.direccion_fiscal_numero }}, {{ lote.pedido.cliente.direccion_fiscal_colonia }}, {{ lote.pedido.cliente.direccion_fiscal_codigo_postal }} {{ lote.pedido.cliente.direccion_fiscal_ciudad }}, {{ lote.pedido.cliente.direccion_fiscal_estado }}{% else %}—{% endif %}'
+        {% else %}
+        cliente: '—',
+        rfc: '—',
+        direccion: '—'
+        {% endif %}
+    };
+    {% endfor %}
 
-document.getElementById('loteSelect').addEventListener('change', function() {
-    var loteId = this.value;
-    var inspeccionSelect = document.getElementById('inspeccionSelect');
-    var previewSection = document.getElementById('previewSection');
-    var facturaSection = document.getElementById('facturaSection');
-    var submitBtn = document.getElementById('submitBtn');
-    
-    inspeccionSelect.innerHTML = '<option value="">Cargando...</option>';
-    inspeccionSelect.disabled = true;
-    previewSection.style.display = 'none';
-    facturaSection.style.display = 'none';
-    submitBtn.disabled = true;
-    
-    if (!loteId) {
-        inspeccionSelect.innerHTML = '<option value="">Seleccione un lote primero...</option>';
-        return;
-    }
-    
-    var csrfToken = '{{ csrf_token }}';
-    
-    fetch('/calidad/certificados/api/inspecciones/?lote_id=' + loteId)
-        .then(function(response) {
-            if (!response.ok) throw new Error('Error en la petición');
-            return response.json();
-        })
-        .then(function(data) {
-            console.log('Inspecciones:', data);
-            inspeccionSelect.innerHTML = '<option value="">Seleccione una inspección...</option>';
-            if (data.length === 0) {
-                inspeccionSelect.innerHTML = '<option value="">No hay inspecciones para este lote</option>';
-            } else {
-                data.forEach(function(insp) {
-                    var option = document.createElement('option');
-                    option.value = insp.id;
-                    option.textContent = insp.clave + ' - ' + insp.fecha;
-                    inspeccionSelect.appendChild(option);
-                });
-                inspeccionSelect.disabled = false;
-            }
-        })
-        .catch(function(error) {
-            console.error('Error:', error);
-            inspeccionSelect.innerHTML = '<option value="">Error al cargar inspecciones</option>';
-        });
-    
-    if (loteData[loteId]) {
-        var data = loteData[loteId];
-        document.getElementById('previewLote').textContent = data.codigo_lote;
-        document.getElementById('previewProducto').textContent = data.producto || '—';
-        document.getElementById('previewCantidad').textContent = data.cantidad || '—';
-        document.getElementById('previewFechaProd').textContent = data.fecha_prod || '—';
-        document.getElementById('previewFechaCad').textContent = data.fecha_cad || '—';
-        document.getElementById('previewCliente').textContent = data.cliente || '—';
-        document.getElementById('previewRFC').textContent = data.rfc || '—';
-        document.getElementById('previewDireccion').textContent = data.direccion || '—';
-        previewSection.style.display = 'block';
-    }
-});
-
-document.getElementById('inspeccionSelect').addEventListener('change', function() {
-    var inspeccionId = this.value;
-    var facturaSection = document.getElementById('facturaSection');
-    var submitBtn = document.getElementById('submitBtn');
-    
-    if (inspeccionId) {
-        facturaSection.style.display = 'flex';
-        submitBtn.disabled = false;
-    } else {
+    // Reemplazo arquitectónico: Implementación de jQuery (.on) para interceptar mutaciones de Select2
+    $('#loteSelect').on('change', function() {
+        console.log("Evento disparado: Cambio detectado en select2 (loteSelect)");
+        var loteId = $(this).val(); // Extracción del valor serializado vía jQuery
+        
+        var inspeccionSelect = document.getElementById('inspeccionSelect');
+        var previewSection = document.getElementById('previewSection');
+        var facturaSection = document.getElementById('facturaSection');
+        var submitBtn = document.getElementById('submitBtn');
+        
+        // Reinicio de estados y bloqueos de seguridad
+        inspeccionSelect.innerHTML = '<option value="">Cargando...</option>';
+        inspeccionSelect.disabled = true;
+        previewSection.style.display = 'none';
         facturaSection.style.display = 'none';
         submitBtn.disabled = true;
-    }
-});
+        
+        // Validación de estado vacío
+        if (!loteId) {
+            inspeccionSelect.innerHTML = '<option value="">Seleccione un lote primero...</option>';
+            return;
+        }
+        
+        var csrfToken = '{{ csrf_token }}';
+        
+        // Petición asíncrona a la API interna
+        fetch('/calidad/certificados/api/inspecciones/?lote_id=' + loteId)
+            .then(function(response) {
+                if (!response.ok) throw new Error('Fallo en la resolución de red (HTTP no OK)');
+                return response.json();
+            })
+            .then(function(data) {
+                console.log('Carga útil de inspecciones recibida:', data);
+                inspeccionSelect.innerHTML = '<option value="">Seleccione una inspección...</option>';
+                if (data.length === 0) {
+                    inspeccionSelect.innerHTML = '<option value="">No hay inspecciones para este lote</option>';
+                } else {
+                    data.forEach(function(insp) {
+                        var option = document.createElement('option');
+                        option.value = insp.id;
+                        option.textContent = insp.clave + ' - ' + insp.fecha;
+                        inspeccionSelect.appendChild(option);
+                    });
+                    inspeccionSelect.disabled = false;
+                }
+            })
+            .catch(function(error) {
+                console.error('Excepción durante la ejecución de Fetch:', error);
+                inspeccionSelect.innerHTML = '<option value="">Error al cargar inspecciones</option>';
+            });
+        
+        // Renderizado del bloque de vista previa si los datos existen en el caché del objeto local
+        if (loteData[loteId]) {
+            var data = loteData[loteId];
+            document.getElementById('previewLote').textContent = data.codigo_lote;
+            document.getElementById('previewProducto').textContent = data.producto || '—';
+            document.getElementById('previewCantidad').textContent = data.cantidad || '—';
+            document.getElementById('previewFechaProd').textContent = data.fecha_prod || '—';
+            document.getElementById('previewFechaCad').textContent = data.fecha_cad || '—';
+            document.getElementById('previewCliente').textContent = data.cliente || '—';
+            document.getElementById('previewRFC').textContent = data.rfc || '—';
+            document.getElementById('previewDireccion').textContent = data.direccion || '—';
+            previewSection.style.display = 'block';
+        }
+    });
 
-{% for lote in lotes %}
-loteData[{{ lote.id }}] = {
-    codigo_lote: '{{ lote.codigo_lote }}',
-    producto: '{{ lote.producto.nombre|default:"" }}',
-    cantidad: '{{ lote.cantidad|default:"" }}',
-    fecha_prod: '{% if lote.fecha_produccion %}{{ lote.fecha_produccion|date:"d/m/Y" }}{% endif %}',
-    fecha_cad: '{% if lote.fecha_caducidad %}{{ lote.fecha_caducidad|date:"d/m/Y" }}{% endif %}',
-    {% if lote.pedido and lote.pedido.cliente %}
-    cliente: '{{ lote.pedido.cliente.nombre|escapejs }}',
-    rfc: '{{ lote.pedido.cliente.rfc|escapejs }}',
-    direccion: '{% if lote.pedido.cliente.direccion_fiscal_calle %}{{ lote.pedido.cliente.direccion_fiscal_calle }} {{ lote.pedido.cliente.direccion_fiscal_numero }}, {{ lote.pedido.cliente.direccion_fiscal_colonia }}, {{ lote.pedido.cliente.direccion_fiscal_codigo_postal }} {{ lote.pedido.cliente.direccion_fiscal_ciudad }}, {{ lote.pedido.cliente.direccion_fiscal_estado }}{% else %}—{% endif %}'
-    {% else %}
-    cliente: '—',
-    rfc: '—',
-    direccion: '—'
-    {% endif %}
-};
-{% endfor %}
+    // Mantenimiento de Vanilla JS: inspeccionSelect no es mutado por Select2, por lo que addEventListener es viable
+    document.getElementById('inspeccionSelect').addEventListener('change', function() {
+        var inspeccionId = this.value;
+        var facturaSection = document.getElementById('facturaSection');
+        var submitBtn = document.getElementById('submitBtn');
+        
+        if (inspeccionId) {
+            facturaSection.style.display = 'flex';
+            submitBtn.disabled = false;
+        } else {
+            facturaSection.style.display = 'none';
+            submitBtn.disabled = true;
+        }
+    });
+});
 </script>
 {% endblock %}
