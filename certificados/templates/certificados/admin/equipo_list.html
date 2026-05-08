@@ -134,11 +134,12 @@
 <script>
 const bajaModal = document.getElementById('bajaModal');
 let currentForm = null;
+let isActivo = false;
 
 bajaModal.addEventListener('show.bs.modal', function (event) {
     const button = event.relatedTarget;
     const url = button.getAttribute('data-url');
-    const activo = button.getAttribute('data-activo') === 'true';
+    isActivo = button.getAttribute('data-activo') === 'true';
     const clave = button.getAttribute('data-clave');
 
     const title = bajaModal.querySelector('.modal-title');
@@ -146,7 +147,7 @@ bajaModal.addEventListener('show.bs.modal', function (event) {
     const confirmBtn = document.getElementById('confirmBajaBtn');
     const modalClave = document.getElementById('modalEquipoClave');
 
-    if (activo) {
+    if (isActivo) {
         title.textContent = 'Dar de Baja Equipo';
         modalClave.textContent = 'Equipo: ' + clave;
         causaInput.parentElement.style.display = 'block';
@@ -159,11 +160,23 @@ bajaModal.addEventListener('show.bs.modal', function (event) {
     }
 
     causaInput.value = '';
+    causaInput.classList.remove('is-invalid');
 
+    // Create form with proper structure
     currentForm = document.createElement('form');
-    currentForm.method = 'post';
+    currentForm.method = 'POST';
     currentForm.action = url;
-    currentForm.innerHTML = '{% csrf_token %}<input type="hidden" name="causa_baja" value="">';
+
+    // Add CSRF token
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    currentForm.innerHTML = `<input type="hidden" name="csrfmiddlewaretoken" value="${csrfToken}">`;
+    
+    // Add causa_baja input
+    const causaHiddenInput = document.createElement('input');
+    causaHiddenInput.type = 'hidden';
+    causaHiddenInput.name = 'causa_baja';
+    causaHiddenInput.value = '';
+    currentForm.appendChild(causaHiddenInput);
 });
 
 const verCausaModal = document.getElementById('verCausaModal');
@@ -177,18 +190,19 @@ verCausaModal.addEventListener('show.bs.modal', function (event) {
 });
 
 document.getElementById('confirmBajaBtn').addEventListener('click', function() {
-    const activo = bajaModal.querySelector('.btn-close').closest('.modal').querySelector('button[data-activo]')?.getAttribute('data-activo') === 'true';
     const causaInput = document.getElementById('causaBajaInput');
+    const causa = causaInput.value.trim();
 
-    if (activo) {
-        const causa = causaInput.value.trim();
-        if (!causa) {
-            causaInput.classList.add('is-invalid');
-            return;
-        }
-        causaInput.classList.remove('is-invalid');
-        currentForm.querySelector('input[name="causa_baja"]').value = causa;
+    if (isActivo && !causa) {
+        causaInput.classList.add('is-invalid');
+        return;
     }
+
+    causaInput.classList.remove('is-invalid');
+
+    // Update hidden input with actual value
+    const hiddenInput = currentForm.querySelector('input[name="causa_baja"]');
+    hiddenInput.value = causa;
 
     document.body.appendChild(currentForm);
     currentForm.submit();

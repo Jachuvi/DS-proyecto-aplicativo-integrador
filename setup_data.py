@@ -4,7 +4,7 @@ import django
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'app.settings')
 django.setup()
 
-from certificados.models import Usuario, Cliente, Parametro, Equipo, Producto
+from certificados.models import Usuario, Cliente, Parametro, Equipo, Producto, ParametroCliente
 from decimal import Decimal
 
 # Create Admin
@@ -373,6 +373,36 @@ if not Cliente.objects.exists():
         requiere_certificado=True
     )
     print("Sample cliente created.")
+    
+    # Create sample ParametroCliente (custom reference values for this client)
+    cliente = Cliente.objects.first()
+    parametros = Parametro.objects.all()[:5]
+    for pc in parametros:
+        if pc.nombre == 'Humedad':
+            ParametroCliente.objects.create(
+                cliente=cliente,
+                parametro=pc,
+                ref_min=13.0,
+                ref_max=15.0,
+                activo=True
+            )
+        elif pc.nombre == 'Cenizas':
+            ParametroCliente.objects.create(
+                cliente=cliente,
+                parametro=pc,
+                ref_min=0.5,
+                ref_max=0.8,
+                activo=True
+            )
+        elif pc.nombre == 'Gluten húmedo':
+            ParametroCliente.objects.create(
+                cliente=cliente,
+                parametro=pc,
+                ref_min=28.0,
+                ref_max=35.0,
+                activo=True
+            )
+    print("Sample ParametroCliente created.")
 else:
     cliente = Cliente.objects.first()
     print("Cliente already exists: {}".format(cliente.nombre))

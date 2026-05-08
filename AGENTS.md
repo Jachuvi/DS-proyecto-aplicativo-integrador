@@ -23,66 +23,84 @@ python setup_data.py
 3. `python setup_data.py`
 
 ## Test Users (from setup_data.py)
-- **Admin**: admin@test.com / adminpassword123
-- **Lab**: lab@test.com / password123
-- **Ventas**: ventas@test.com / password123
-- **Calidad**: calidad@test.com / password123
-- **Almacén**: almacen@test.com / password123
+- **Admin**: admin@test.com / adminpassword123 (full access)
+- **Ventas**: ventas@test.com / password123 (register venta)
+- **Lab**: lab@test.com / password123 (inspections)
+- **Control Calidad**: controlcalidad@test.com / password123 (certificates + inspections)
+- **Aseguramiento Calidad**: calidad@test.com / password123 (certificates + statistics)
+- **Gerente Planta**: gerenteplanta@test.com / password123 (statistics)
+- **Director Operaciones**: directoroperaciones@test.com / password123 (statistics)
+- **Almacén**: almacen@test.com / password123 (lotes + despachos)
+
+## Roles & Access
+
+| Role | Access |
+|------|--------|
+| **ventas** | RegistroVenta only |
+| **lab** | Inspecciones Pendientes, resultados |
+| **control calidad** | Inspecciones + Certificados |
+| **aseguramiento calidad** | Certificados + Estadísticas |
+| **operaciones** | Lotes + Pedidos/Despachos |
+| **gerente planta** | Estadísticas only |
+| **director operaciones** | Estadísticas only |
+| **admin** | Universal access |
 
 ## Architecture
 - Custom `Usuario` model (extends AbstractBaseUser) replaces Django's User
 - AUTH_USER_MODEL = 'certificados.Usuario' in settings
-- Roles: lab, aseguramineto calidad, control calidad, planta, operaciones, admin, ventas
 - Uses SQLite (db.sqlite3) for development
 
 ## Key Dependencies
 - django-filter (filtering)
 - xhtml2pdf (PDF certificate generation)
 - Select2 (searchable selects)
+- resend (email sending)
 
 ## URL Structure
-- Root `/` → HomeView
-- `/ventas/registro/` → Ventas - Register new Venta (auto-creates Pedido)
-- `/pedidos/pendientes/` → Almacén - List all pedidos with filters
+- Root `/` → HomeView (role-specific dashboard)
+- `/ventas/registro/` → Ventas - Register new Venta
 - `/laboratorio/inspecciones/` → Lab - Inspecciones pendientes
 - `/laboratorio/lote/<id>/iniciar/` → Lab - Start inspection
-- `/calidad/certificados/` → Calidad - List certificados
-- `/calidad/certificados/nuevo/` → Calidad - Create certificado
-- `/calidad/certificados/<id>/ver/` → Calidad - View certificado
-- `/calidad/certificados/<id>/descargar/` → Calidad - Download PDF
-- `/calidad/certificados/<id>/editar/` → Calidad - Edit certificado
-- `/almacen/lotes/` → Almacén - List/create lotes
-- `/admin-catalogo/` → Catalog management (clients, parameters, equipment, products)
+- `/calidad/certificados/` → Certificados list
+- `/calidad/certificados/nuevo/` → Create certificado
+- `/calidad/certificados/<id>/ver/` → View certificado
+- `/calidad/certificados/<id>/descargar/` → Download PDF
+- `/almacen/lotes/` → Lotes list
+- `/admin-catalogo/clientes/` → Client management (with detail view)
+- `/admin-catalogo/equipos/` → Equipment management (with detail view + filters)
 - `/admin/` → Django admin
-- `/accounts/` → Django auth (login/logout)
+- `/accounts/` → Django auth
 
-## Sidebar Navigation
+## Sidebar Navigation (role-based)
 - **Ventas**: Registrar Venta
-- **Laboratorio**: Inspecciones Pendientes
-- **Calidad**: Certificados
-- **Almacén**: Lotes, Pedidos
-- **Administración**: Clientes, Productos, Equipos, Parámetros
+- **Laboratorio**: Inspecciones Pendientes (lab + control calidad)
+- **Calidad**: Certificados (control calidad + aseguramiento calidad)
+- **Estadísticas**: (aseguramiento calidad + gerente planta + director operaciones)
+- **Almacén**: Lotes, Pedidos (operaciones)
+- **Administración**: Clientes, Productos, Equipos, Parámetros (admin only)
 
 ## Model Overview
 
-### Venta (NEW)
+### Venta
 - Auto-generated orden (V-YYYYMMDD-XXXX format)
 - Automatically creates a linked Pedido on save
 - Estados: pendiente, aceptado, rechazado, despachado
 
 ### Cliente
-- Has separate `direccion_fiscal` and `direccion_entrega` fields
-- `direccion_entrega_misma` flag to use fiscal address for delivery
+- `id_cliente` field for SAP Business ByD integration
+- Separate fiscal and delivery addresses
 - Supports custom parameter reference values via ParametroCliente
-
-### Producto
-- Catálogo de productos (codigo, nombre, descripcion)
 
 ### Parametro
 - Global parameters (Humedad, Cenizas, Gluten, Falling Number, etc.)
 - Equipment-specific parameters:
   - Alveógrafo: P, L, P/L, W, Ie
   - Farinógrafo: Absorción de agua, Tiempo de desarrollo, Estabilidad, Grado de decaimiento
+
+### ParametroCliente
+- Custom reference values per client
+- Overrides global Parametro ref_min/ref_max
+- Marked as (P)articular in certificates vs (I)nternacional
 
 ### Pedido
 - ForeignKey to Venta (auto-linked)
@@ -91,10 +109,10 @@ python setup_data.py
 ### Lote
 - Auto-generated code (L-XXXXX)
 - Associated to Pedido
-- producto, cantidad, fecha_produccion, fecha_caducidad
+- fecha_caducidad copied to Certificate
 
 ### Inspeccion
-- Associated to Lote (equipo is optional)
+- Associated to Lote
 - Auto-generated clave (A-XXXXX, B-XXXXX, etc.)
 - Multiple Resultado entries
 
@@ -106,12 +124,20 @@ python setup_data.py
 - Associated to Inspeccion and Pedido
 - Auto-generated folio (CERT-XXXXX)
 - Estados: borrador, aprobado, despachado, rechazado, superado
-- PDF generation support
+- PDF generation with xhtml2pdf
+- Auto-sends email via Resend on creation/approval
 
 ## Workflow
 
 1. **Ventas** creates a Venta → Auto-creates Pedido
-2. **Almacén** assigns Lote to Pedido
+2. **Almacén (operaciones)** assigns Lote to Pedido
 3. **Laboratorio** performs inspection on Lote → Creates Inspeccion with Resultados
-4. **Calidad** creates Certificado from Inspeccion + Pedido
-5. **Calidad** approves and downloads PDF
+4. **Control Calidad** creates Certificado from Inspeccion + Pedido
+5. **Aseguramiento Calidad** approves Certificate → Auto-sends PDF to client email
+6. **Almacén** completes dispatch
+
+## Environment Variables (.env)
+```
+RESEND_API_KEY=re_xxxxxxxxxxxxx
+RESEND_FROM_EMAIL=onboarding@resend.dev
+```

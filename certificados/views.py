@@ -52,6 +52,8 @@ class HomeView(LoginRequiredMixin, TemplateView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+        user = self.request.user
+        
         ctx["pedidos_pendientes"] = Pedido.objects.filter(estado="pendiente").count()
         ctx["certificados_totales"] = Certificado.objects.count()
         ctx["certificados_enviados"] = Certificado.objects.filter(enviado=True).count()
@@ -62,6 +64,27 @@ class HomeView(LoginRequiredMixin, TemplateView):
         ctx["certificados_por_despachar"] = Certificado.objects.filter(
             estado="aprobado"
         ).count()
+        
+        # Role-specific stats
+        if user.rol in ["lab", "control calidad", "admin"]:
+            ctx["lotes_sin_inspeccion"] = Lote.objects.filter(
+                pedido__isnull=False, activo=True
+            ).exclude(
+                inspeccion__isnull=False
+            ).count()
+        
+        if user.rol in ["control calidad", "aseguramiento calidad", "admin"]:
+            ctx["inspecciones_pendientes"] = Inspeccion.objects.filter(
+                lote__pedido__isnull=False
+            ).exclude(
+                resultados__isnull=False
+            ).count()
+        
+        if user.rol in ["operaciones", "admin"]:
+            ctx["lotes_sin_asignar"] = Lote.objects.filter(
+                pedido__isnull=True, activo=True
+            ).count()
+        
         return ctx
 
 

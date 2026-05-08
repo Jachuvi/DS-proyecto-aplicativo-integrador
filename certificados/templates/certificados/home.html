@@ -75,132 +75,509 @@
         font-weight: 600;
         margin: 24px 0 14px;
     }
+    .role-badge {
+        background: #e8ecf7;
+        color: #1a2a5e;
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.85rem;
+        display: inline-block;
+        margin-top: 8px;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="welcome">
     <h2>Bienvenido, {{ user.nombre }}</h2>
-    <p>Gestiona pedidos, inspecciones y certificados de calidad desde un solo lugar.</p>
+    <p>{% if user.rol == 'ventas' %}Gestiona tus ventas y pedidos.
+       {% elif user.rol == 'lab' %}Administra las inspecciones de laboratorio.
+       {% elif user.rol == 'control calidad' %}Control de calidad y certificados.
+       {% elif user.rol == 'aseguramiento calidad' %}Aseguramiento de calidad y estadísticas.
+       {% elif user.rol == 'operaciones' %}Gestión de almacén, lotes y despachos.
+       {% elif user.rol == 'gerente planta' %}Panel de gestión de planta.
+       {% elif user.rol == 'director operaciones' %}Panel de operaciones y estadísticas.
+       {% else %}Sistema de gestión de certificados de calidad.{% endif %}</p>
+    <span class="role-badge">{{ user.get_rol_display }}</span>
 </div>
 
-<div class="row g-3 mb-2">
-    <div class="col-md-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
-            <div>
-                <div class="stat-value">{{ pedidos_pendientes }}</div>
-                <div class="stat-label">Pedidos pendientes</div>
+{# ==================== VENTAS ==================== #}
+{% if user.rol == 'ventas' %}
+    <div class="row g-3 mb-2">
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+                <div>
+                    <div class="stat-value">{{ pedidos_pendientes }}</div>
+                    <div class="stat-label">Pedidos pendientes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon navy"><i class="bi bi-building"></i></div>
+                <div>
+                    <div class="stat-value">{{ clientes_activos }}</div>
+                    <div class="stat-label">Clientes activos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-send-check"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_enviados }}</div>
+                    <div class="stat-label">Certificados enviados</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-icon red"><i class="bi bi-clipboard-data"></i></div>
-            <div>
-                <div class="stat-value">{{ certificados_por_aprobar }}</div>
-                <div class="stat-label">Por aprobar (Calidad)</div>
+
+    <h3 class="section-title">Acciones</h3>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <a href="{% url 'registro_venta' %}" class="action-card">
+                <div class="icon"><i class="bi bi-cart-plus"></i></div>
+                <h3>Registrar Nueva Venta</h3>
+                <p>Captura una nueva venta que generará automáticamente un pedido.</p>
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+{# ==================== LABORATORIO ==================== #}
+{% if user.rol == 'lab' %}
+    <div class="row g-3 mb-2">
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+                <div>
+                    <div class="stat-value">{{ pedidos_pendientes }}</div>
+                    <div class="stat-label">Pedidos pendientes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="bi bi-clipboard-pulse"></i></div>
+                <div>
+                    <div class="stat-value">{{ lotes_sin_inspeccion|default:0 }}</div>
+                    <div class="stat-label">Lotes sin inspección</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-check-circle"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_enviados }}</div>
+                    <div class="stat-label">Inspecciones completadas</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-icon amber"><i class="bi bi-truck"></i></div>
-            <div>
-                <div class="stat-value">{{ certificados_por_despachar }}</div>
-                <div class="stat-label">Por despachar (Almacén)</div>
+
+    <h3 class="section-title">Acciones de Laboratorio</h3>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="action-card">
+                <div class="icon"><i class="bi bi-clipboard-check"></i></div>
+                <h3>Inspecciones Pendientes</h3>
+                <p>Revisa pedidos pendientes e inicia inspecciones de laboratorio.</p>
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+{# ==================== CONTROL CALIDAD ==================== #}
+{% if user.rol == 'control calidad' %}
+    <div class="row g-3 mb-2">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-clipboard-pulse"></i></div>
+                <div>
+                    <div class="stat-value">{{ inspecciones_pendientes|default:0 }}</div>
+                    <div class="stat-label">Inspecciones sin resultados</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="bi bi-file-earmark-text"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_por_aprobar }}</div>
+                    <div class="stat-label">Certificados por aprobar</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-truck"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_por_despachar }}</div>
+                    <div class="stat-label">Por despachar</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-award"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_totales }}</div>
+                    <div class="stat-label">Certificados emitidos</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-icon green"><i class="bi bi-send-check"></i></div>
-            <div>
-                <div class="stat-value">{{ certificados_enviados }}</div>
-                <div class="stat-label">Enviados al cliente</div>
+
+    <h3 class="section-title">Acciones de Control de Calidad</h3>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="action-card">
+                <div class="icon"><i class="bi bi-clipboard-check"></i></div>
+                <h3>Inspecciones Pendientes</h3>
+                <p>Revisa e inicia inspecciones de laboratorio.</p>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'certificados_list' %}" class="action-card">
+                <div class="icon"><i class="bi bi-award"></i></div>
+                <h3>Certificados</h3>
+                <p>Crea, consulta y aprueba certificados de calidad.</p>
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+{# ==================== ASEGURAMIENTO CALIDAD ==================== #}
+{% if user.rol == 'aseguramiento calidad' %}
+    <div class="row g-3 mb-2">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="bi bi-file-earmark-text"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_por_aprobar }}</div>
+                    <div class="stat-label">Por aprobar</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-truck"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_por_despachar }}</div>
+                    <div class="stat-label">Por despachar</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-send-check"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_enviados }}</div>
+                    <div class="stat-label">Enviados al cliente</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon navy"><i class="bi bi-award"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_totales }}</div>
+                    <div class="stat-label">Total emitidos</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-icon navy"><i class="bi bi-award"></i></div>
-            <div>
-                <div class="stat-value">{{ certificados_totales }}</div>
-                <div class="stat-label">Certificados emitidos</div>
+
+    <h3 class="section-title">Acciones de Aseguramiento</h3>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <a href="{% url 'certificados_list' %}" class="action-card">
+                <div class="icon"><i class="bi bi-award"></i></div>
+                <h3>Consultar Certificados</h3>
+                <p>Revisa, aprueba y gestiona certificados de calidad.</p>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'estadisticas' %}" class="action-card">
+                <div class="icon"><i class="bi bi-bar-chart-line"></i></div>
+                <h3>Estadísticas</h3>
+                <p>Indicadores, gráficos y análisis de calidad.</p>
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+{# ==================== OPERACIONES / ALMACÉN ==================== #}
+{% if user.rol == 'operaciones' %}
+    <div class="row g-3 mb-2">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+                <div>
+                    <div class="stat-value">{{ pedidos_pendientes }}</div>
+                    <div class="stat-label">Pedidos pendientes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="bi bi-box-seam"></i></div>
+                <div>
+                    <div class="stat-value">{{ lotes_sin_asignar|default:0 }}</div>
+                    <div class="stat-label">Lotes sin asignar</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-truck"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_por_despachar }}</div>
+                    <div class="stat-label">Por despachar</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-check2-all"></i></div>
+                <div>
+                    <div class="stat-value">{{ clientes_activos }}</div>
+                    <div class="stat-label">Clientes activos</div>
+                </div>
             </div>
         </div>
     </div>
-    <div class="col-md-3 col-sm-6">
-        <div class="stat-card">
-            <div class="stat-icon navy"><i class="bi bi-building"></i></div>
-            <div>
-                <div class="stat-value">{{ clientes_activos }}</div>
-                <div class="stat-label">Clientes activos</div>
+
+    <h3 class="section-title">Acciones de Almacén</h3>
+    <div class="row g-3">
+        <div class="col-md-4">
+            <a href="{% url 'lote_list' %}" class="action-card">
+                <div class="icon"><i class="bi bi-box-seam"></i></div>
+                <h3>Gestión de Lotes</h3>
+                <p>Administra lotes de producción.</p>
+            </a>
+        </div>
+        <div class="col-md-4">
+            <a href="{% url 'pendientes_despacho' %}" class="action-card">
+                <div class="icon"><i class="bi bi-truck"></i></div>
+                <h3>Pedidos</h3>
+                <p>Gestiona pedidos y despachos.</p>
+            </a>
+        </div>
+    </div>
+{% endif %}
+
+{# ==================== GERENTE PLANTA ==================== #}
+{% if user.rol == 'gerente planta' %}
+    <div class="row g-3 mb-2">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon navy"><i class="bi bi-award"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_totales }}</div>
+                    <div class="stat-label">Certificados emitidos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-send-check"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_enviados }}</div>
+                    <div class="stat-label">Enviados al cliente</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+                <div>
+                    <div class="stat-value">{{ pedidos_pendientes }}</div>
+                    <div class="stat-label">Pedidos pendientes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon navy"><i class="bi bi-building"></i></div>
+                <div>
+                    <div class="stat-value">{{ clientes_activos }}</div>
+                    <div class="stat-label">Clientes activos</div>
+                </div>
             </div>
         </div>
     </div>
-</div>
 
-<h3 class="section-title">Accesos rápidos</h3>
-<div class="row g-3">
-    {% if user.rol == 'ventas' or user.rol == 'admin' %}
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'registro_venta' %}" class="action-card">
-            <div class="icon"><i class="bi bi-file-earmark-plus"></i></div>
-            <h3>Registrar Venta</h3>
-            <p>Captura una nueva venta. Se generará automáticamente una orden y pedido vinculado.</p>
-        </a>
+    <h3 class="section-title">Gestión de Planta</h3>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <a href="{% url 'estadisticas' %}" class="action-card">
+                <div class="icon"><i class="bi bi-bar-chart-line"></i></div>
+                <h3>Estadísticas</h3>
+                <p>Indicadores y métricas de la planta.</p>
+            </a>
+        </div>
     </div>
-    {% endif %}
+{% endif %}
 
-    {% if user.rol == 'lab' or user.rol == 'admin' %}
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="action-card">
-            <div class="icon"><i class="bi bi-clipboard-check"></i></div>
-            <h3>Recepción de Pedidos</h3>
-            <p>Revisa pedidos pendientes, asigna equipo de laboratorio e inicia la inspección.</p>
-        </a>
+{# ==================== DIRECTOR OPERACIONES ==================== #}
+{% if user.rol == 'director operaciones' %}
+    <div class="row g-3 mb-2">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon navy"><i class="bi bi-award"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_totales }}</div>
+                    <div class="stat-label">Certificados emitidos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-send-check"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_enviados }}</div>
+                    <div class="stat-label">Enviados al cliente</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-truck"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_por_despachar }}</div>
+                    <div class="stat-label">Por despachar</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+                <div>
+                    <div class="stat-value">{{ pedidos_pendientes }}</div>
+                    <div class="stat-label">Pedidos pendientes</div>
+                </div>
+            </div>
+        </div>
     </div>
-    {% endif %}
 
-    {% if user.rol == 'calidad' or user.rol == 'admin' %}
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'certificados_list' %}" class="action-card">
-            <div class="icon"><i class="bi bi-award"></i></div>
-            <h3>Consultar y Aprobar Certificados</h3>
-            <p>Revisa certificados en borrador, aprúebalos y dispara el envío al cliente.</p>
-        </a>
+    <h3 class="section-title">Operaciones</h3>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <a href="{% url 'estadisticas' %}" class="action-card">
+                <div class="icon"><i class="bi bi-bar-chart-line"></i></div>
+                <h3>Estadísticas</h3>
+                <p>Dashboard de operaciones y métricas.</p>
+            </a>
+        </div>
     </div>
-    {% endif %}
+{% endif %}
 
-    {% if user.rol == 'almacen' or user.rol == 'admin' %}
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'pendientes_despacho' %}" class="action-card">
-            <div class="icon"><i class="bi bi-truck"></i></div>
-            <h3>Despachos Pendientes</h3>
-            <p>Captura factura y cantidad entregada para cerrar el ciclo de despacho.</p>
-        </a>
+{# ==================== ADMIN ==================== #}
+{% if user.rol == 'admin' %}
+    <div class="row g-3 mb-2">
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-hourglass-split"></i></div>
+                <div>
+                    <div class="stat-value">{{ pedidos_pendientes }}</div>
+                    <div class="stat-label">Pedidos pendientes</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon red"><i class="bi bi-clipboard-data"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_por_aprobar }}</div>
+                    <div class="stat-label">Por aprobar (Calidad)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon amber"><i class="bi bi-truck"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_por_despachar }}</div>
+                    <div class="stat-label">Por despachar (Almacén)</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon green"><i class="bi bi-send-check"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_enviados }}</div>
+                    <div class="stat-label">Enviados al cliente</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon navy"><i class="bi bi-award"></i></div>
+                <div>
+                    <div class="stat-value">{{ certificados_totales }}</div>
+                    <div class="stat-label">Certificados emitidos</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 col-sm-6">
+            <div class="stat-card">
+                <div class="stat-icon navy"><i class="bi bi-building"></i></div>
+                <div>
+                    <div class="stat-value">{{ clientes_activos }}</div>
+                    <div class="stat-label">Clientes activos</div>
+                </div>
+            </div>
+        </div>
     </div>
-    {% endif %}
 
-    {% if user.rol == 'calidad' or user.rol == 'admin' or user.rol == 'consulta' %}
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'estadisticas' %}" class="action-card">
-            <div class="icon"><i class="bi bi-bar-chart-line"></i></div>
-            <h3>Estadísticas</h3>
-            <p>Indicadores y gráficas: certificados por mes, tasa de cumplimiento, top de clientes.</p>
-        </a>
+    <h3 class="section-title">Accesos rápidos</h3>
+    <div class="row g-3">
+        <div class="col-md-4 col-sm-6">
+            <a href="{% url 'registro_venta' %}" class="action-card">
+                <div class="icon"><i class="bi bi-cart-plus"></i></div>
+                <h3>Registrar Venta</h3>
+                <p>Nueva venta con pedido automático.</p>
+            </a>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <a href="{% url 'iniciar_inspeccion_pendientes' %}" class="action-card">
+                <div class="icon"><i class="bi bi-clipboard-check"></i></div>
+                <h3>Inspecciones</h3>
+                <p>Gestión de inspecciones de laboratorio.</p>
+            </a>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <a href="{% url 'certificados_list' %}" class="action-card">
+                <div class="icon"><i class="bi bi-award"></i></div>
+                <h3>Certificados</h3>
+                <p>Consulta, crea y aprueba certificados.</p>
+            </a>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <a href="{% url 'lote_list' %}" class="action-card">
+                <div class="icon"><i class="bi bi-box-seam"></i></div>
+                <h3>Lotes</h3>
+                <p>Gestión de lotes de producción.</p>
+            </a>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <a href="{% url 'pendientes_despacho' %}" class="action-card">
+                <div class="icon"><i class="bi bi-truck"></i></div>
+                <h3>Pedidos</h3>
+                <p>Gestión de pedidos y despachos.</p>
+            </a>
+        </div>
+        <div class="col-md-4 col-sm-6">
+            <a href="{% url 'estadisticas' %}" class="action-card">
+                <div class="icon"><i class="bi bi-bar-chart-line"></i></div>
+                <h3>Estadísticas</h3>
+                <p>Indicadores y gráficos de negocio.</p>
+            </a>
+        </div>
     </div>
-    {% endif %}
-
-    {% if user.rol != 'ventas' %}
-    <div class="col-md-4 col-sm-6">
-        <a href="{% url 'historial_index' %}" class="action-card">
-            <div class="icon"><i class="bi bi-clock-history"></i></div>
-            <h3>Trazabilidad por lote</h3>
-            <p>Línea de tiempo completa: pedido, inspección, resultados y certificado.</p>
-        </a>
-    </div>
-    {% endif %}
-</div>
+{% endif %}
 {% endblock %}
