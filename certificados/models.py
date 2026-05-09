@@ -61,7 +61,7 @@ class Cliente(models.Model):
         blank=True,
         null=True,
         unique=True,
-        help_text="ID del cliente en SAP Business ByDesign"
+        help_text="ID del cliente en SAP Business ByDesign",
     )
     nombre = models.CharField(max_length=255)
     rfc = models.CharField(max_length=13, unique=True)
@@ -315,9 +315,7 @@ class Venta(models.Model):
 
 
 class Lote(models.Model):
-    pedido = models.ForeignKey(
-        Pedido, on_delete=models.CASCADE, blank=True, null=True, related_name="lotes"
-    )
+    pedido = models.ManyToManyField(Pedido, blank=True, related_name="lotes")
     codigo_lote = models.CharField(max_length=50, default="L-TEMP")
     secuencia = models.CharField(max_length=1, default="A")
     producto = models.ForeignKey(
@@ -388,12 +386,13 @@ class Resultado(models.Model):
 
     def save(self, *args, **kwargs):
         from decimal import Decimal
+
         if isinstance(self.valor_obtenido, str):
             self.valor_obtenido = Decimal(self.valor_obtenido)
-        
+
         ref_min = self.parametro.ref_min
         ref_max = self.parametro.ref_max
-        
+
         if self.valor_obtenido > ref_max:
             self.desvio_vs_ref = abs(self.valor_obtenido - ref_max)
         elif self.valor_obtenido < ref_min:
@@ -418,7 +417,15 @@ class Certificado(models.Model):
     fecha_emision = models.DateTimeField(auto_now_add=True)
     pdf_url = models.CharField(max_length=255, blank=True, null=True)
     enviado = models.BooleanField(default=False)
-
+    direccion_envio_calle = models.CharField(max_length=150, blank=True, null=True)
+    direccion_envio_numero = models.CharField(max_length=50, blank=True, null=True)
+    direccion_envio_interior = models.CharField(max_length=50, blank=True, null=True)
+    direccion_envio_colonia = models.CharField(max_length=100, blank=True, null=True)
+    direccion_envio_codigo_postal = models.CharField(
+        max_length=5, blank=True, null=True
+    )
+    direccion_envio_ciudad = models.CharField(max_length=100, blank=True, null=True)
+    direccion_envio_estado = models.CharField(max_length=100, blank=True, null=True)
     estado = models.CharField(max_length=20, choices=ESTADOS, default="borrador")
     aprobado_por = models.ForeignKey(
         Usuario,

@@ -108,14 +108,8 @@
                     <div class="mb-3">
                         <label for="lote_select_{{ pedido.id }}" class="form-label">Seleccionar Lote</label>
                         <select name="lote_id" id="lote_select_{{ pedido.id }}" class="form-select" required>
-                            <option value="">Seleccione un lote...</option>
-                            {% for lote in pedido.lotes.all %}
-                            <option value="{{ lote.id }}" selected>{{ lote.codigo_lote }}</option>
-                            {% endfor %}
                             {% for lote in all_lotes %}
-                            {% if not lote.pedido %}
                             <option value="{{ lote.id }}">{{ lote.codigo_lote }}</option>
-                            {% endif %}
                             {% endfor %}
                         </select>
                     </div>

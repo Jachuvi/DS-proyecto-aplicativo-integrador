@@ -1,6 +1,12 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 {% block title %}Nuevo Certificado{% endblock %}
 {% block page_title %}Nuevo Certificado{% endblock %}
+
+{% block extra_head %}
+<!-- Ejecución diferida de la API para prevenir bloqueos del subproceso principal -->
+<script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&loading=async" async defer></script>
+{% endblock %}
 
 {% block content %}
 <div class="card">
@@ -55,10 +61,49 @@
                 </div>
             </div>
 
-            <div id="facturaSection" class="row g-3 mt-3" style="display: none;">
-                <div class="col-md-6">
+            <div id="facturaSection" class="row g-3 mt-4" style="display: none;">
+                <div class="col-12">
+                    <h5 class="border-bottom pb-2">Información de Despacho</h5>
+                </div>
+                
+                <div class="col-md-12 mb-2">
                     <label for="numero_factura" class="form-label">Número de Factura</label>
                     <input type="text" name="numero_factura" id="numero_factura" class="form-control" placeholder="Ej: FC-A-00045892">
+                </div>
+
+                <div class="col-12 mt-3">
+                    <label class="form-label fw-bold text-primary">Buscar Dirección de Envío</label>
+                    <!-- Contenedor del elemento web Google PlaceAutocompleteElement -->
+                    <div id="address-autocomplete-envio-container"></div>
+                </div>
+
+                <div class="col-md-6 mt-2">
+                    <label class="form-label">Calle</label>
+                    <input type="text" name="direccion_envio_calle" class="form-control">
+                </div>
+                <div class="col-md-3 mt-2">
+                    <label class="form-label">Número</label>
+                    <input type="text" name="direccion_envio_numero" class="form-control">
+                </div>
+                <div class="col-md-3 mt-2">
+                    <label class="form-label">Interior</label>
+                    <input type="text" name="direccion_envio_interior" class="form-control">
+                </div>
+                <div class="col-md-6 mt-2">
+                    <label class="form-label">Colonia</label>
+                    <input type="text" name="direccion_envio_colonia" class="form-control">
+                </div>
+                <div class="col-md-6 mt-2">
+                    <label class="form-label">Código Postal</label>
+                    <input type="text" name="direccion_envio_codigo_postal" class="form-control">
+                </div>
+                <div class="col-md-6 mt-2">
+                    <label class="form-label">Ciudad</label>
+                    <input type="text" name="direccion_envio_ciudad" class="form-control">
+                </div>
+                <div class="col-md-6 mt-2">
+                    <label class="form-label">Estado</label>
+                    <input type="text" name="direccion_envio_estado" class="form-control">
                 </div>
             </div>
             
@@ -71,12 +116,9 @@
 </div>
 
 <script>
-// Nota Técnica: Asegúrese de que la librería jQuery esté importada en 'base.html' antes de la ejecución de este script.
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Script loaded y DOM inicializado');
     var loteData = {};
     
-    // Pre-carga estructurada de datos procesados por el motor de plantillas de Django
     {% for lote in lotes %}
     loteData[{{ lote.id }}] = {
         codigo_lote: '{{ lote.codigo_lote }}',
@@ -84,51 +126,47 @@ document.addEventListener('DOMContentLoaded', function() {
         cantidad: '{{ lote.cantidad|default:"" }}',
         fecha_prod: '{% if lote.fecha_produccion %}{{ lote.fecha_produccion|date:"d/m/Y" }}{% endif %}',
         fecha_cad: '{% if lote.fecha_caducidad %}{{ lote.fecha_caducidad|date:"d/m/Y" }}{% endif %}',
-        {% if lote.pedido and lote.pedido.cliente %}
-        cliente: '{{ lote.pedido.cliente.nombre|escapejs }}',
-        rfc: '{{ lote.pedido.cliente.rfc|escapejs }}',
-        direccion: '{% if lote.pedido.cliente.direccion_fiscal_calle %}{{ lote.pedido.cliente.direccion_fiscal_calle }} {{ lote.pedido.cliente.direccion_fiscal_numero }}, {{ lote.pedido.cliente.direccion_fiscal_colonia }}, {{ lote.pedido.cliente.direccion_fiscal_codigo_postal }} {{ lote.pedido.cliente.direccion_fiscal_ciudad }}, {{ lote.pedido.cliente.direccion_fiscal_estado }}{% else %}—{% endif %}'
+        
+        /* Carga determinista del primer cliente asociado al lote para la previsualización */
+        {% with primer_pedido=lote.pedido.first %}
+        {% if primer_pedido and primer_pedido.cliente %}
+        cliente: '{{ primer_pedido.cliente.nombre|escapejs }}',
+        rfc: '{{ primer_pedido.cliente.rfc|escapejs }}',
+        direccion: '{% if primer_pedido.cliente.direccion_fiscal_calle %}{{ primer_pedido.cliente.direccion_fiscal_calle }} {{ primer_pedido.cliente.direccion_fiscal_numero }}, {{ primer_pedido.cliente.direccion_fiscal_colonia }}, {{ primer_pedido.cliente.direccion_fiscal_codigo_postal }} {{ primer_pedido.cliente.direccion_fiscal_ciudad }}, {{ primer_pedido.cliente.direccion_fiscal_estado }}{% else %}—{% endif %}'
         {% else %}
         cliente: '—',
         rfc: '—',
         direccion: '—'
         {% endif %}
+        {% endwith %}
     };
     {% endfor %}
 
-    // Reemplazo arquitectónico: Implementación de jQuery (.on) para interceptar mutaciones de Select2
     $('#loteSelect').on('change', function() {
-        console.log("Evento disparado: Cambio detectado en select2 (loteSelect)");
-        var loteId = $(this).val(); // Extracción del valor serializado vía jQuery
+        var loteId = $(this).val();
         
         var inspeccionSelect = document.getElementById('inspeccionSelect');
         var previewSection = document.getElementById('previewSection');
         var facturaSection = document.getElementById('facturaSection');
         var submitBtn = document.getElementById('submitBtn');
         
-        // Reinicio de estados y bloqueos de seguridad
         inspeccionSelect.innerHTML = '<option value="">Cargando...</option>';
         inspeccionSelect.disabled = true;
         previewSection.style.display = 'none';
         facturaSection.style.display = 'none';
         submitBtn.disabled = true;
         
-        // Validación de estado vacío
         if (!loteId) {
             inspeccionSelect.innerHTML = '<option value="">Seleccione un lote primero...</option>';
             return;
         }
         
-        var csrfToken = '{{ csrf_token }}';
-        
-        // Petición asíncrona a la API interna
         fetch('/calidad/certificados/api/inspecciones/?lote_id=' + loteId)
             .then(function(response) {
-                if (!response.ok) throw new Error('Fallo en la resolución de red (HTTP no OK)');
+                if (!response.ok) throw new Error('Fallo en la resolución HTTP');
                 return response.json();
             })
             .then(function(data) {
-                console.log('Carga útil de inspecciones recibida:', data);
                 inspeccionSelect.innerHTML = '<option value="">Seleccione una inspección...</option>';
                 if (data.length === 0) {
                     inspeccionSelect.innerHTML = '<option value="">No hay inspecciones para este lote</option>';
@@ -143,11 +181,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(function(error) {
-                console.error('Excepción durante la ejecución de Fetch:', error);
                 inspeccionSelect.innerHTML = '<option value="">Error al cargar inspecciones</option>';
             });
         
-        // Renderizado del bloque de vista previa si los datos existen en el caché del objeto local
         if (loteData[loteId]) {
             var data = loteData[loteId];
             document.getElementById('previewLote').textContent = data.codigo_lote;
@@ -162,7 +198,6 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
-    // Mantenimiento de Vanilla JS: inspeccionSelect no es mutado por Select2, por lo que addEventListener es viable
     document.getElementById('inspeccionSelect').addEventListener('change', function() {
         var inspeccionId = this.value;
         var facturaSection = document.getElementById('facturaSection');
@@ -171,11 +206,82 @@ document.addEventListener('DOMContentLoaded', function() {
         if (inspeccionId) {
             facturaSection.style.display = 'flex';
             submitBtn.disabled = false;
+            
+            // Instanciación condicional post-renderizado para evitar manipulación DOM invisible
+            if (!window.addressInitialized) {
+                initAddressAutocomplete();
+                window.addressInitialized = true;
+            }
         } else {
             facturaSection.style.display = 'none';
             submitBtn.disabled = true;
         }
     });
 });
+
+// Función de instanciación del motor topológico Google Places
+async function initAddressAutocomplete() {
+    if (!window.google) {
+        setTimeout(initAddressAutocomplete, 100);
+        return;
+    }
+
+    await google.maps.importLibrary('places');
+
+    const placeAutocompleteEnvio = new google.maps.places.PlaceAutocompleteElement({
+        includedRegionCodes: ['mx']
+    });
+    placeAutocompleteEnvio.className = 'form-control';
+    
+    const container = document.getElementById('address-autocomplete-envio-container');
+    container.innerHTML = ''; // Vacía el contenedor antes de inyectar
+    container.appendChild(placeAutocompleteEnvio);
+
+    placeAutocompleteEnvio.addEventListener('gmp-select', async (event) => {
+        fillAddressFields(event, 'direccion_envio');
+    });
+}
+
+// Resolución iterativa de componentes geográficos
+async function fillAddressFields(event, prefix) {
+    const placePrediction = event.placePrediction;
+    const place = placePrediction.toPlace();
+
+    await place.fetchFields({
+        fields: ['addressComponents']
+    });
+
+    const components = {
+        street_number: `${prefix}_numero`,
+        route: `${prefix}_calle`,
+        sublocality: `${prefix}_colonia`,
+        neighborhood: `${prefix}_colonia`,
+        locality: `${prefix}_ciudad`,
+        administrative_area_level_1: `${prefix}_estado`,
+        postal_code: `${prefix}_codigo_postal`
+    };
+
+    // Restablecimiento iterativo a nulo antes de poblar nuevos valores
+    Object.values(components).forEach(name => {
+        const field = document.querySelector(`[name="${name}"]`);
+        if (field) field.value = '';
+    });
+
+    place.addressComponents.forEach((component) => {
+        component.types.forEach((type) => {
+            const fieldName = components[type];
+            if (fieldName) {
+                const field = document.querySelector(`[name="${fieldName}"]`);
+                if (field) {
+                    field.value = component.longText;
+                }
+            }
+            if (type === 'street_number') {
+                const numField = document.querySelector(`[name="${prefix}_numero"]`);
+                if (numField) numField.value = component.shortText;
+            }
+        });
+    });
+}
 </script>
 {% endblock %}

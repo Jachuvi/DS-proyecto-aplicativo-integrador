@@ -1,6 +1,6 @@
-{% load custom_filters %}
 <!DOCTYPE html>
 <html lang="es">
+  {% load custom_filters %}
 <head>
     <meta charset="UTF-8">
     <title>Certificado de Calidad - {{ certificado.folio }}</title>
@@ -142,8 +142,22 @@
         <td colspan="3">{{ certificado.pedido.cliente.get_direccion_fiscal|default:"—" }}</td>
     </tr>
     <tr>
-        <th>Dirección Entrega:</th>
-        <td colspan="3">{{ certificado.pedido.cliente.get_direccion_entrega|default:"—" }}</td>
+        <th>Dirección de Envío:</th>
+        <!-- 
+            Resolución de prioridad:
+            1. Intenta renderizar la variable inyectada desde ImprimirCertificadoView.
+            2. Si no existe (caso DescargarCertificadoPDFView no actualizado), ejecuta la concatenación de parámetros de Certificado nativos.
+            3. Si el campo calle del Certificado es nulo, devuelve el carácter emdash "—".
+        -->
+        <td colspan="3">
+            {% if direccion_envio_str %}
+                {{ direccion_envio_str }}
+            {% elif certificado.direccion_envio_calle %}
+                {{ certificado.direccion_envio_calle }} {{ certificado.direccion_envio_numero|default:"" }} {{ certificado.direccion_envio_interior|default:"" }}, {{ certificado.direccion_envio_colonia|default:"" }}, {{ certificado.direccion_envio_codigo_postal|default:"" }} {{ certificado.direccion_envio_ciudad|default:"" }}, {{ certificado.direccion_envio_estado|default:"" }}
+            {% else %}
+                —
+            {% endif %}
+        </td>
     </tr>
 </table>
 

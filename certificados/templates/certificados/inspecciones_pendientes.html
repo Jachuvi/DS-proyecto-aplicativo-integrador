@@ -35,45 +35,54 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- Bucle primario: Itera la entidad principal (Lotes) -->
                     {% for lote in lotes %}
-                    <tr>
-                        <td><strong>{{ lote.codigo_lote }}</strong></td>
-                        <td>{{ lote.producto.nombre|default:"—" }}</td>
-                        <td>{{ lote.cantidad|default:"—" }}</td>
-                        <td>{{ lote.pedido.id|default:"—" }}</td>
-                        <td>{{ lote.fecha_produccion|date:"d/m/Y"|default:"—" }}</td>
-                        <td>
-                            {% with inspecciones=lote.inspeccion_set.all %}
-                            {% if inspecciones %}
-                            <span class="badge {% if inspecciones.0.cumple_param %}bg-success{% else %}bg-danger{% endif %}">
-                                {% if inspecciones.0.cumple_param %}Cumple{% else %}No cumple{% endif %}
-                            </span>
-                            <span class="text-muted small">{{ inspecciones.0.fecha_inspeccion|date:"d/m/Y" }}</span>
-                            {% if inspecciones|length > 1 %}
-                            <span class="badge bg-secondary ms-1">+{{ inspecciones|length|add:"-1" }}</span>
+                        <!-- Bucle secundario: Expansión del ManyRelatedManager en registros escalares -->
+                        {% for pedido in lote.pedido.all %}
+                            
+                            <!-- Aislamiento de vectores iterados basado en la máquina de estados -->
+                            {% if filter != 'pendientes' or pedido.estado == 'pendiente' %}
+                            <tr>
+                                <td><strong>{{ lote.codigo_lote }}</strong></td>
+                                <td>{{ lote.producto.nombre|default:"—" }}</td>
+                                <td>{{ pedido.cantidad|default:"—" }}</td>
+                                <!-- Resolución escalar directa sobre la iteración del Pedido -->
+                                <td>{{ pedido.id|default:"—" }}</td>
+                                <td>{{ lote.fecha_produccion|date:"d/m/Y"|default:"—" }}</td>
+                                <td>
+                                    {% with inspecciones=lote.inspeccion_set.all %}
+                                    {% if inspecciones %}
+                                    <span class="badge {% if inspecciones.0.cumple_param %}bg-success{% else %}bg-danger{% endif %}">
+                                        {% if inspecciones.0.cumple_param %}Cumple{% else %}No cumple{% endif %}
+                                    </span>
+                                    <span class="text-muted small">{{ inspecciones.0.fecha_inspeccion|date:"d/m/Y" }}</span>
+                                    {% if inspecciones|length > 1 %}
+                                    <span class="badge bg-secondary ms-1">+{{ inspecciones|length|add:"-1" }}</span>
+                                    {% endif %}
+                                    {% else %}
+                                    <span class="text-muted">—</span>
+                                    {% endif %}
+                                    {% endwith %}
+                                </td>
+                                <td class="text-end">
+                                    {% if lote.inspeccion_set.first %}
+                                    <a href="{% url 'nueva_inspeccion' lote.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-plus"></i> Registro análisis subsecuente
+                                    </a>
+                                    {% else %}
+                                    <a href="{% url 'iniciar_inspeccion' lote.id %}" class="btn btn-primary btn-sm">
+                                        <i class="bi bi-play"></i> Registro análisis inicial
+                                    </a>
+                                    {% endif %}
+                                </td>
+                            </tr>
                             {% endif %}
-                            {% else %}
-                            <span class="text-muted">—</span>
-                            {% endif %}
-                            {% endwith %}
-                        </td>
-                        <td class="text-end">
-                            {% if lote.inspeccion_set.first %}
-                            <a href="{% url 'nueva_inspeccion' lote.id %}" class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-plus"></i> Registro análisis subsecuente
-                            </a>
-                            {% else %}
-                            <a href="{% url 'iniciar_inspeccion' lote.id %}" class="btn-brand">
-                                <i class="bi bi-play"></i> Registro análisis inicial
-                            </a>
-                            {% endif %}
-                        </td>
-                    </tr>
+                        {% endfor %}
                     {% empty %}
                     <tr>
                         <td colspan="7" class="text-center text-muted py-4">
                             <i class="bi bi-inbox" style="font-size: 1.8rem; opacity: 0.5;"></i><br>
-                            No hay lotes.
+                            No hay lotes con requerimientos en esta categoría.
                         </td>
                     </tr>
                     {% endfor %}
